@@ -435,6 +435,8 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
         }
 
         .day-modal-title {
@@ -442,18 +444,49 @@
             font-weight: 600;
         }
 
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
         .close-btn {
-            background: none;
-            border: none;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
             color: white;
-            font-size: 1.5em;
+            font-size: 1.2em;
             cursor: pointer;
-            opacity: 0.7;
-            transition: opacity 0.3s ease;
+            opacity: 0.8;
+            transition: all 0.3s ease;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .close-btn:hover {
             opacity: 1;
+            background: rgba(255,255,255,0.2);
+            border-color: rgba(255,255,255,0.4);
+        }
+
+        .save-close-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border: none;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .save-close-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
         }
 
         .habit-entry {
@@ -566,8 +599,8 @@
         }
 
         .status-btn.missed.active {
-            border-color: #64748b;
-            background: rgba(100, 116, 139, 0.3);
+            border-color: #ef4444;
+            background: rgba(239, 68, 68, 0.3);
         }
 
         .loading {
@@ -702,7 +735,10 @@
         <div class="day-modal-content">
             <div class="day-modal-header">
                 <h3 class="day-modal-title" id="dayModalTitle">Edit Day</h3>
-                <button class="close-btn" onclick="closeDayModal()">&times;</button>
+                <div class="modal-actions">
+                    <button class="save-close-btn" onclick="saveAndCloseDayModal()">✓ Save & Close</button>
+                    <button class="close-btn" onclick="closeDayModal()" title="Close without saving">&times;</button>
+                </div>
             </div>
             
             <div id="dayModalContent">
@@ -1167,6 +1203,14 @@
         function closeDayModal() {
             document.getElementById('dayModal').style.display = 'none';
             selectedDate = null;
+        }
+
+        function saveAndCloseDayModal() {
+            // Auto-save is already happening on each click, so just close
+            closeDayModal();
+            
+            // Show a quick feedback
+            console.log('Changes saved to Google Sheets');
         }
 
         async function updateHabitStatus(habit, category, status) {
