@@ -1,4 +1,4 @@
-<!-- Day Detail Modal -->
+    <!-- Day Detail Modal -->
     <div id="dayModal" class="day-modal">
         <div class="day-modal-content">
             <div class="day-modal-header">
@@ -1655,6 +1655,66 @@
             updateCalendar();
         }
 
+        function updateHabitsView() {
+            if (!currentUser) return;
+            
+            // Get all habits for current user
+            const userHabits = habitsData.filter(h => h.person === currentUser);
+            
+            // Group habits by category
+            const categories = {};
+            userHabits.forEach(habit => {
+                if (!categories[habit.category]) {
+                    categories[habit.category] = [];
+                }
+                categories[habit.category].push(habit);
+            });
+            
+            // Render habits management view
+            const habitsContainer = document.getElementById('habitsView');
+            let habitsHtml = '';
+            
+            // Add category section for each category
+            Object.keys(categories).forEach(category => {
+                const categoryHabits = categories[category];
+                
+                habitsHtml += `
+                    <div class="category-section">
+                        <h3>${category}</h3>
+                        <div class="habits-list">
+                            ${categoryHabits.map(habit => `
+                                <div class="habit-item">
+                                    <div class="habit-details">
+                                        <div class="habit-name">${habit.habit}</div>
+                                        <div class="habit-schedule">${habit.schedule}</div>
+                                    </div>
+                                    <div class="habit-actions">
+                                        <button onclick="editHabit('${habit.habit}', '${habit.category}', '${habit.schedule}')">Edit</button>
+                                        <button onclick="deleteHabit('${habit.habit}')">Delete</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            // Add new habit form
+            habitsHtml += `
+                <div class="add-habit-section">
+                    <h3>Add New Habit</h3>
+                    <div class="add-habit-form">
+                        <input type="text" id="newHabitName" placeholder="Habit name">
+                        <input type="text" id="newHabitCategory" placeholder="Category">
+                        <input type="text" id="newHabitSchedule" placeholder="Schedule (e.g. 'daily', 'Mon,Wed,Fri')">
+                        <button onclick="addNewHabit()">Add Habit</button>
+                    </div>
+                </div>
+            `;
+            
+            habitsContainer.innerHTML = habitsHtml;
+        }
+
         function openDayModal(dateStr) {
             selectedDate = dateStr;
             const date = new Date(dateStr);
@@ -1845,6 +1905,183 @@
                 closeDayModal();
             }
         });
+
+        async function addNewHabit() {
+            if (!currentUser) return;
+            
+            const habitName = document.getElementById('newHabitName').value.trim();
+            const category = document.getElementById('newHabitCategory').value.trim();
+            const schedule = document.getElementById('newHabitSchedule').value.trim();
+            
+            if (!habitName || !category || !schedule) {
+                alert('Please fill in all fields');
+                return;
+            }
+            
+            // Create new habit object
+            const newHabit = {
+                person: currentUser,
+                habit: habitName,
+                category: category,
+                schedule: schedule,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            try {
+                // Create unique ID for this habit
+                const habitId = `${currentUser}_${habitName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                // Save to Firestore
+                await db.collection('habits').doc(habitId).set(newHabit);
+                
+                // Update local data
+                habitsData.push(newHabit);
+                
+                // Clear form
+                document.getElementById('newHabitName').value = '';
+                document.getElementById('newHabitCategory').value = '';
+                document.getElementById('newHabitSchedule').value = '';
+                
+                // Refresh view
+                updateHabitsView();
+                updateDashboard();
+                
+                console.log('Habit added successfully');
+                
+            } catch (error) {
+                console.error('Error adding habit:', error);
+                alert('Error adding habit. Please try again.');
+            }
+        }
+        
+        async function deleteHabit(habitName) {
+            if (!currentUser) return;
+            
+            if (!confirm(`Are you sure you want to delete "${habitName}"?`)) {
+                return;
+            }
+            
+            try {
+                // Create unique ID for this habit
+                const habitId = `${currentUser}_${habitName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                // Delete from Firestore
+                await db.collection('habits').doc(habitId).delete();
+                
+                // Update local data
+                habitsData = habitsData.filter(h => !(h.person === currentUser && h.habit === habitName));
+                
+                // Also remove any entries for this habit
+                entriesData = entriesData.filter(e => !(e.person === currentUser && e.habit === habitName));
+                
+                // Refresh views
+                updateHabitsView();
+                updateDashboard();
+                updateCalendar();
+                
+                console.log('Habit deleted successfully');
+                
+            } catch (error) {
+                console.error('Error deleting habit:', error);
+                alert('Error deleting habit. Please try again.');
+            }
+        }
+        
+        async function editHabit(habitName, category, schedule) {
+            if (!currentUser) return;
+            
+            // Show edit form with current values
+            const newName = prompt('Habit name:', habitName);
+            if (!newName) return;
+            
+            const newCategory = prompt('Category:', category);
+            if (!newCategory) return;
+            
+            const newSchedule = prompt('Schedule:', schedule);
+            if (!newSchedule) return;
+            
+            try {
+                // If the name changed, we need to delete the old one and create a new one
+                if (habitName !== newName) {
+                    // Delete old habit
+                    await deleteHabit(habitName);
+                    
+                    // Create new habit object
+                    const updatedHabit = {
+                        person: currentUser,
+                        habit: newName,
+                        category: newCategory,
+                        schedule: newSchedule,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    
+                    // Create unique ID for this habit
+                    const habitId = `${currentUser}_${newName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                    
+                    // Save to Firestore
+                    await db.collection('habits').doc(habitId).set(updatedHabit);
+                    
+                    // Update local data
+                    habitsData.push(updatedHabit);
+                    
+                } else {
+                    // Just update the existing habit
+                    const habitId = `${currentUser}_${habitName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                    
+                    // Update in Firestore
+                    await db.collection('habits').doc(habitId).update({
+                        category: newCategory,
+                        schedule: newSchedule,
+                        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    // Update local data
+                    const habitIndex = habitsData.findIndex(h => h.person === currentUser && h.habit === habitName);
+                    if (habitIndex !== -1) {
+                        habitsData[habitIndex].category = newCategory;
+                        habitsData[habitIndex].schedule = newSchedule;
+                    }
+                }
+                
+                // Refresh views
+                updateHabitsView();
+                updateDashboard();
+                
+                console.log('Habit updated successfully');
+                
+            } catch (error) {
+                console.error('Error updating habit:', error);
+                alert('Error updating habit. Please try again.');
+            }
+        }
+        
+        async function deleteHabitEntry(habit, category) {
+            if (!selectedDate || !currentUser) return;
+            
+            try {
+                // Remove from local data
+                entriesData = entriesData.filter(e => 
+                    !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
+                );
+                
+                // Create unique ID for this entry
+                const entryId = `${currentUser}_${selectedDate}_${habit}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                // Delete from Firestore
+                await db.collection('entries').doc(entryId).delete();
+                
+                // Refresh views
+                openDayModal(selectedDate);
+                updateDashboard();
+                updateCalendar();
+                
+                console.log('Entry deleted successfully');
+                
+            } catch (error) {
+                console.error('Error deleting entry:', error);
+                // Could show a notification to user here
+            }
+        }
     </script>
 </body>
 </html>
