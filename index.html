@@ -770,6 +770,76 @@
         let currentView = 'dashboard';
         let currentDate = new Date();
         let selectedDate = null;
+        let categoryColors = {}; // Store category color preferences
+
+        // Predefined color palette for categories
+        const COLOR_PALETTE = [
+            '#667eea', // Purple-blue
+            '#f093fb', // Pink
+            '#4ecdc4', // Teal
+            '#45b7d1', // Blue
+            '#96ceb4', // Mint green
+            '#feca57', // Orange
+            '#ff6b6b', // Red
+            '#c44569', // Dark pink
+            '#f8b500', // Yellow
+            '#6c5ce7', // Purple
+            '#00cec9', // Cyan
+            '#fd79a8', // Light pink
+            '#fdcb6e', // Light orange
+            '#6c5ce7', // Violet
+            '#00b894', // Green
+            '#e17055'  // Coral
+        ];
+
+        // Function to calculate luminance and determine text color
+        function getTextColor(hexColor) {
+            // Remove # if present
+            const hex = hexColor.replace('#', '');
+            
+            // Convert hex to RGB
+            const r = parseInt(hex.substr(0, 2), 16);
+            const g = parseInt(hex.substr(2, 2), 16);
+            const b = parseInt(hex.substr(4, 2), 16);
+            
+            // Calculate luminance using the formula
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            
+            // Return dark text for light backgrounds, light text for dark backgrounds
+            return luminance > 0.5 ? '#2d2d2d' : '#ffffff';
+        }
+
+        // Function to get category color (with fallback)
+        function getCategoryColor(category) {
+            if (categoryColors[category]) {
+                return categoryColors[category];
+            }
+            
+            // Generate a consistent color based on category name
+            let hash = 0;
+            for (let i = 0; i < category.length; i++) {
+                hash = category.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const colorIndex = Math.abs(hash) % COLOR_PALETTE.length;
+            
+            // Store and return the color
+            categoryColors[category] = COLOR_PALETTE[colorIndex];
+            saveCategoryColors();
+            return categoryColors[category];
+        }
+
+        // Save category colors to localStorage
+        function saveCategoryColors() {
+            localStorage.setItem(`categoryColors_${currentUser}`, JSON.stringify(categoryColors));
+        }
+
+        // Load category colors from localStorage
+        function loadCategoryColors() {
+            const saved = localStorage.getItem(`categoryColors_${currentUser}`);
+            if (saved) {
+                categoryColors = JSON.parse(saved);
+            }
+        }
 
         // User avatars
         const userAvatars = {
@@ -893,10 +963,13 @@
             
             let categoriesHTML = '';
             Object.keys(categories).forEach(categoryName => {
+                const bgColor = getCategoryColor(categoryName);
+                const textColor = getTextColor(bgColor);
+                
                 categoriesHTML += `
-                    <div class="category-card">
+                    <div class="category-card" style="background: ${bgColor}; color: ${textColor};">
                         <div class="category-header">
-                            <div class="category-title">${categoryName}</div>
+                            <div class="category-title" style="color: ${textColor};">${categoryName}</div>
                         </div>
                 `;
                 
@@ -905,10 +978,10 @@
                     const status = entry ? entry.status : 'missed';
                     
                     categoriesHTML += `
-                        <div class="habit-row" onclick="openDayModal('${today}')">
+                        <div class="habit-row" onclick="openDayModal('${today}')" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
                             <div class="habit-info">
-                                <div class="habit-name">${habit.habit}</div>
-                                <div class="habit-schedule">${habit.schedule}</div>
+                                <div class="habit-name" style="color: ${textColor};">${habit.habit}</div>
+                                <div class="habit-schedule" style="color: ${textColor}; opacity: 0.8; background: rgba(255,255,255,0.1);">${habit.schedule}</div>
                             </div>
                             <div class="habit-status">
                                 <div class="status-indicator ${status}"></div>
@@ -1053,20 +1126,28 @@
             
             let habitsHTML = '';
             Object.keys(categories).forEach(categoryName => {
+                const bgColor = getCategoryColor(categoryName);
+                const textColor = getTextColor(bgColor);
+                
                 habitsHTML += `
                     <div class="habits-category">
-                        <h3 style="margin-bottom: 15px; color: #667eea;">${categoryName}</h3>
+                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
+                            <h3 style="color: ${bgColor}; margin: 0;">${categoryName}</h3>
+                            <button onclick="changeCategoryColor('${categoryName}')" 
+                                    style="background: ${bgColor}; color: ${textColor}; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;"
+                                    title="Change category color">🎨</button>
+                        </div>
                         <div class="habits-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
                 `;
                 
                 categories[categoryName].forEach(habit => {
                     habitsHTML += `
-                        <div class="habit-tile" style="background: rgba(255,255,255,0.05); border-radius: 10px; padding: 20px; border: 1px solid rgba(255,255,255,0.1);">
-                            <div style="font-weight: 600; margin-bottom: 8px;">${habit.habit}</div>
-                            <div style="font-size: 0.8em; opacity: 0.7; margin-bottom: 15px;">${habit.schedule}</div>
+                        <div class="habit-tile" style="background: ${bgColor}; color: ${textColor}; border-radius: 10px; padding: 20px; border: 1px solid rgba(255,255,255,0.2);">
+                            <div style="font-weight: 600; margin-bottom: 8px; color: ${textColor};">${habit.habit}</div>
+                            <div style="font-size: 0.8em; opacity: 0.8; margin-bottom: 15px; color: ${textColor};">${habit.schedule}</div>
                             <div style="display: flex; gap: 10px;">
-                                <button onclick="editHabit('${habit.habit}')" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Edit</button>
-                                <button onclick="deleteHabit('${habit.habit}')" style="background: rgba(239,68,68,0.2); border: 1px solid rgba(239,68,68,0.4); color: white; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Delete</button>
+                                <button onclick="editHabit('${habit.habit}')" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: ${textColor}; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Edit</button>
+                                <button onclick="deleteHabit('${habit.habit}')" style="background: rgba(255,0,0,0.3); border: 1px solid rgba(255,0,0,0.5); color: ${textColor}; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Delete</button>
                             </div>
                         </div>
                     `;
@@ -1277,6 +1358,9 @@
             document.getElementById('userAvatar').textContent = userAvatars[person];
             document.getElementById('userName').textContent = person.charAt(0).toUpperCase() + person.slice(1);
             
+            // Load category colors for this user
+            loadCategoryColors();
+            
             // Load and display data
             loadData().then(() => {
                 updateDashboard();
@@ -1379,6 +1463,70 @@
                 closeDayModal();
             }
         });
+
+        function changeCategoryColor(categoryName) {
+            // Create a simple color picker modal
+            const colorOptions = COLOR_PALETTE.map(color => 
+                `<button onclick="setCategoryColor('${categoryName}', '${color}')" 
+                        style="background: ${color}; color: ${getTextColor(color)}; border: 2px solid ${color === getCategoryColor(categoryName) ? '#fff' : 'transparent'}; 
+                               width: 40px; height: 40px; margin: 5px; border-radius: 8px; cursor: pointer;">
+                   ${color === getCategoryColor(categoryName) ? '✓' : ''}
+                 </button>`
+            ).join('');
+            
+            const customColorInput = `
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                    <label style="display: block; margin-bottom: 8px; color: white;">Or choose custom color:</label>
+                    <input type="color" id="customColorPicker" value="${getCategoryColor(categoryName)}" 
+                           onchange="setCategoryColor('${categoryName}', this.value)"
+                           style="width: 50px; height: 30px; border: none; border-radius: 4px; cursor: pointer;">
+                </div>
+            `;
+            
+            // Create modal HTML
+            const modalHTML = `
+                <div id="colorPickerModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                     background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center;">
+                    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
+                         border-radius: 15px; padding: 30px; max-width: 400px; border: 1px solid rgba(255,255,255,0.2);">
+                        <h3 style="color: white; margin-bottom: 20px; text-align: center;">Choose Color for "${categoryName}"</h3>
+                        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
+                            ${colorOptions}
+                        </div>
+                        ${customColorInput}
+                        <div style="text-align: center; margin-top: 20px;">
+                            <button onclick="closeColorPicker()" 
+                                    style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); 
+                                           color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Add modal to page
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+        }
+
+        function setCategoryColor(categoryName, color) {
+            categoryColors[categoryName] = color;
+            saveCategoryColors();
+            
+            // Refresh views to show new color
+            updateDashboard();
+            updateHabitsView();
+            
+            // Close color picker
+            closeColorPicker();
+        }
+
+        function closeColorPicker() {
+            const modal = document.getElementById('colorPickerModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
     </script>
 </body>
 </html>
