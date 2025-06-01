@@ -480,6 +480,57 @@
             opacity: 0.7;
         }
 
+        .habit-section {
+            margin-bottom: 20px;
+        }
+
+        .bonus-task-row {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            padding: 15px;
+        }
+
+        .bonus-habit-select {
+            flex: 1;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .bonus-habit-select option {
+            background: #1a1a2e;
+            color: white;
+        }
+
+        .add-bonus-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .add-bonus-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(34, 197, 94, 0.3);
+        }
+
+        .add-bonus-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .status-buttons {
             display: flex;
             gap: 8px;
@@ -662,7 +713,7 @@
 
     <script>
         // Configuration
-        const APPS_SCRIPT_URL = 'YOUR_APPS_SCRIPT_URL_HERE'; // Replace with your deployed web app URL
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmR1zQstIn_ZeXrod0eji7TPuOqzN_ZuJlxDupc7TRY7O4AEll7adZBN22HJh-fCg_mg/exec';
         const SHEET_ID = '1w2JDjLzGSxorjlOZb9A7Hf6V0CDdLt_QpBBckX4er9A';
         const API_KEY = 'AIzaSyBZEQeeQHoX5Zak2dFlERfkW6atzPkg8tg';
 
@@ -748,7 +799,7 @@
             try {
                 console.log('Loading data from Google Apps Script...');
                 
-                if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'https://script.google.com/macros/s/AKfycbxmR1zQstIn_ZeXrod0eji7TPuOqzN_ZuJlxDupc7TRY7O4AEll7adZBN22HJh-fCg_mg/exec') {
+                if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
                     console.log('Apps Script URL not configured, using sample data');
                     habitsData = SAMPLE_HABITS;
                     entriesData = generateSampleEntries();
@@ -839,6 +890,8 @@
             // Calculate stats
             const today = new Date().toISOString().split('T')[0];
             const todayEntries = userEntries.filter(e => e.date === today);
+            
+            // Only show scheduled habits for today in dashboard
             const todayHabits = userHabits.filter(h => isHabitScheduledForDate(h, new Date()));
             
             const todayCompleted = todayEntries.filter(e => e.status === 'completed').length;
@@ -849,9 +902,9 @@
             document.getElementById('todayCompletion').textContent = todayCompletion + '%';
             document.getElementById('userStats').textContent = `${todayCompleted}/${todayTotal} habits completed today`;
             
-            // Group habits by category
+            // Group ONLY scheduled habits by category
             const categories = {};
-            userHabits.forEach(habit => {
+            todayHabits.forEach(habit => {
                 if (!categories[habit.category]) {
                     categories[habit.category] = [];
                 }
@@ -860,12 +913,11 @@
             
             // Render categories
             const categoriesGrid = document.getElementById('categoriesGrid');
-            categoriesGrid.innerHTML = Object.keys(categories).map(categoryName => {
+            let categoriesHtml = Object.keys(categories).map(categoryName => {
                 const categoryHabits = categories[categoryName];
                 const habitsHtml = categoryHabits.map(habit => {
                     const todayEntry = todayEntries.find(e => e.habit === habit.habit);
                     const status = todayEntry ? todayEntry.status : 'missed';
-                    const isScheduledToday = isHabitScheduledForDate(habit, new Date());
                     
                     return `
                         <div class="habit-row" onclick="openDayModal('${today}')">
@@ -874,8 +926,8 @@
                                 <div class="habit-schedule">${habit.schedule}</div>
                             </div>
                             <div class="habit-status">
-                                ${isScheduledToday ? `<div class="status-indicator ${status}"></div>` : ''}
-                                <span>${isScheduledToday ? (status === 'completed' ? 'Done' : status === 'rest' ? 'Rest' : 'Pending') : 'Not scheduled'}</span>
+                                <div class="status-indicator ${status}"></div>
+                                <span>${status === 'completed' ? 'Done' : status === 'rest' ? 'Rest' : 'Pending'}</span>
                             </div>
                         </div>
                     `;
@@ -890,6 +942,25 @@
                     </div>
                 `;
             }).join('');
+            
+            // Add bonus task section
+            const allUserHabits = userHabits.map(h => h.habit).sort();
+            const bonusTasksHtml = `
+                <div class="category-card bonus-tasks">
+                    <div class="category-header">
+                        <div class="category-title">Add Bonus Task</div>
+                    </div>
+                    <div class="bonus-task-row">
+                        <select id="bonusHabitSelect" class="bonus-habit-select">
+                            <option value="">Choose a habit to add...</option>
+                            ${allUserHabits.map(habit => `<option value="${habit}">${habit}</option>`).join('')}
+                        </select>
+                        <button class="add-bonus-btn" onclick="addBonusTask()">+ Add Today</button>
+                    </div>
+                </div>
+            `;
+            
+            categoriesGrid.innerHTML = categoriesHtml + bonusTasksHtml;
         }
 
         function updateCalendar() {
@@ -978,40 +1049,114 @@
             const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
             document.getElementById('dayModalTitle').textContent = date.toLocaleDateString('en-US', options);
             
-            // Get habits for this user and date
+            // Get ALL habits for this user (not just scheduled ones)
             const userHabits = habitsData.filter(h => h.person === currentUser);
-            const scheduledHabits = userHabits.filter(h => isHabitScheduledForDate(h, date));
             const dayEntries = entriesData.filter(e => e.person === currentUser && e.date === dateStr);
             
-            const modalContent = document.getElementById('dayModalContent');
-            modalContent.innerHTML = scheduledHabits.map(habit => {
-                const entry = dayEntries.find(e => e.habit === habit.habit);
-                const currentStatus = entry ? entry.status : 'missed';
-                
-                return `
-                    <div class="habit-entry">
-                        <div class="habit-entry-info">
-                            <div class="habit-entry-name">${habit.habit}</div>
-                            <div class="habit-entry-category">${habit.category}</div>
-                        </div>
-                        <div class="status-buttons">
-                            <button class="status-btn completed ${currentStatus === 'completed' ? 'active' : ''}" 
-                                    onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'completed')">
-                                ✅
-                            </button>
-                            <button class="status-btn rest ${currentStatus === 'rest' ? 'active' : ''}" 
-                                    onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'rest')">
-                                💤
-                            </button>
-                            <button class="status-btn missed ${currentStatus === 'missed' ? 'active' : ''}" 
-                                    onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'missed')">
-                                ❌
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+            // Separate scheduled and unscheduled habits
+            const scheduledHabits = userHabits.filter(h => isHabitScheduledForDate(h, date));
+            const unscheduledHabits = userHabits.filter(h => !isHabitScheduledForDate(h, date));
             
+            // Find unscheduled habits that have entries (bonus tasks)
+            const bonusHabits = unscheduledHabits.filter(h => 
+                dayEntries.some(e => e.habit === h.habit)
+            );
+            
+            const modalContent = document.getElementById('dayModalContent');
+            
+            let modalHtml = '';
+            
+            // Scheduled habits section
+            if (scheduledHabits.length > 0) {
+                modalHtml += `<div class="habit-section">
+                    <h4 style="margin-bottom: 15px; opacity: 0.8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Scheduled Habits</h4>`;
+                
+                modalHtml += scheduledHabits.map(habit => {
+                    const entry = dayEntries.find(e => e.habit === habit.habit);
+                    const currentStatus = entry ? entry.status : 'missed';
+                    
+                    return `
+                        <div class="habit-entry">
+                            <div class="habit-entry-info">
+                                <div class="habit-entry-name">${habit.habit}</div>
+                                <div class="habit-entry-category">${habit.category}</div>
+                            </div>
+                            <div class="status-buttons">
+                                <button class="status-btn completed ${currentStatus === 'completed' ? 'active' : ''}" 
+                                        onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'completed')">
+                                    ✅
+                                </button>
+                                <button class="status-btn rest ${currentStatus === 'rest' ? 'active' : ''}" 
+                                        onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'rest')">
+                                    💤
+                                </button>
+                                <button class="status-btn missed ${currentStatus === 'missed' ? 'active' : ''}" 
+                                        onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'missed')">
+                                    ❌
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                modalHtml += '</div>';
+            }
+            
+            // Bonus tasks section
+            if (bonusHabits.length > 0) {
+                modalHtml += `<div class="habit-section" style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; opacity: 0.8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Bonus Tasks</h4>`;
+                
+                modalHtml += bonusHabits.map(habit => {
+                    const entry = dayEntries.find(e => e.habit === habit.habit);
+                    const currentStatus = entry ? entry.status : 'missed';
+                    
+                    return `
+                        <div class="habit-entry">
+                            <div class="habit-entry-info">
+                                <div class="habit-entry-name">${habit.habit}</div>
+                                <div class="habit-entry-category">${habit.category} (bonus)</div>
+                            </div>
+                            <div class="status-buttons">
+                                <button class="status-btn completed ${currentStatus === 'completed' ? 'active' : ''}" 
+                                        onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'completed')">
+                                    ✅
+                                </button>
+                                <button class="status-btn rest ${currentStatus === 'rest' ? 'active' : ''}" 
+                                        onclick="updateHabitStatus('${habit.habit}', '${habit.category}', 'rest')">
+                                    💤
+                                </button>
+                                <button class="status-btn missed ${currentStatus === 'missed' ? 'active' : ''}" 
+                                        onclick="deleteHabitEntry('${habit.habit}', '${habit.category}')">
+                                    🗑️
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                modalHtml += '</div>';
+            }
+            
+            // Add task section for unscheduled days
+            const availableHabits = unscheduledHabits.filter(h => 
+                !dayEntries.some(e => e.habit === h.habit)
+            );
+            
+            if (availableHabits.length > 0) {
+                modalHtml += `<div class="habit-section" style="margin-top: 25px;">
+                    <h4 style="margin-bottom: 15px; opacity: 0.8; font-size: 0.9em; text-transform: uppercase; letter-spacing: 1px;">Add Bonus Task</h4>
+                    <div class="bonus-task-row">
+                        <select id="modalBonusSelect" class="bonus-habit-select">
+                            <option value="">Choose a habit to add...</option>
+                            ${availableHabits.map(habit => `<option value="${habit.habit}|${habit.category}">${habit.habit}</option>`).join('')}
+                        </select>
+                        <button class="add-bonus-btn" onclick="addBonusTaskToDay()">+ Add</button>
+                    </div>
+                </div>`;
+            }
+            
+            modalContent.innerHTML = modalHtml;
             document.getElementById('dayModal').style.display = 'flex';
         }
 
