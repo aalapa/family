@@ -620,26 +620,325 @@
 
         /* Responsive Design */
         @media (max-width: 768px) {
+            body {
+                padding: 60px 15px 15px 15px;
+            }
+            
+            /* Login Screen Mobile */
             .login-title {
-                font-size: 2.5em;
+                font-size: 2.2em;
+                margin-bottom: 15px;
+            }
+            
+            .login-subtitle {
+                font-size: 1.2em;
+                margin-bottom: 30px;
             }
             
             .person-selection {
                 grid-template-columns: 1fr;
-                max-width: 300px;
+                max-width: 280px;
+                gap: 20px;
+            }
+            
+            .person-card {
+                padding: 30px 20px;
+            }
+            
+            .person-avatar {
+                font-size: 3em;
+                margin-bottom: 10px;
+            }
+            
+            .person-name {
+                font-size: 1.5em;
+            }
+            
+            /* Main App Mobile */
+            .main-app {
+                padding: 10px;
+            }
+            
+            .app-header {
+                flex-direction: column;
+                gap: 15px;
+                padding: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .user-info {
+                gap: 10px;
+            }
+            
+            .user-avatar {
+                font-size: 2em;
+            }
+            
+            .user-details h2 {
+                font-size: 1.4em;
+            }
+            
+            .user-details p {
+                font-size: 0.9em;
+            }
+            
+            .app-nav {
+                gap: 10px;
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .nav-btn {
+                padding: 10px 16px;
+                font-size: 0.85em;
+                flex: 1;
+                max-width: 100px;
+            }
+            
+            /* Dashboard Mobile */
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .stat-card {
+                padding: 20px 15px;
+            }
+            
+            .stat-value {
+                font-size: 2em;
+            }
+            
+            .stat-label {
+                font-size: 0.8em;
             }
             
             .categories-grid {
                 grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .category-card {
+                padding: 20px 15px;
+            }
+            
+            .category-title {
+                font-size: 1.2em;
+                letter-spacing: 0.5px;
+            }
+            
+            .habit-row {
+                flex-direction: column;
+                gap: 10px;
+                padding: 12px;
+                text-align: center;
+            }
+            
+            .habit-info {
+                gap: 8px;
+            }
+            
+            .habit-name {
+                font-size: 1em;
+            }
+            
+            .habit-schedule {
+                font-size: 0.75em;
+            }
+            
+            .habit-status {
+                gap: 8px;
+            }
+            
+            /* Bonus Tasks Mobile */
+            .bonus-task-row {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px;
+            }
+            
+            .bonus-habit-select {
+                width: 100%;
+                padding: 12px;
+                font-size: 0.9em;
+            }
+            
+            .add-bonus-btn {
+                width: 100%;
+                padding: 12px;
+                font-size: 0.9em;
+            }
+            
+            /* Calendar Mobile */
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+                margin-bottom: 20px;
+            }
+            
+            .calendar-nav {
+                gap: 10px;
+            }
+            
+            .calendar-nav button {
+                padding: 8px 12px;
+                font-size: 0.8em;
             }
             
             .calendar-grid {
                 padding: 10px;
+                gap: 1px;
+            }
+            
+            .calendar-day-header {
+                padding: 8px;
+                font-size: 0.8em;
             }
             
             .calendar-day {
-                min-height: 60px;
-                padding: 5px;
+                min-height: 35px;
+                padding: 4px;
+            }
+            
+            .day-number {
+                font-size: 0.8em;
+                margin-bottom: 2px;
+            }
+            
+            /* Modal Mobile */
+            .day-modal {
+                padding: 10px;
+            }
+            
+            .day-modal-content {
+                padding: 20px 15px;
+                max-height: 90vh;
+                width: 100%;
+                margin: 0;
+                border-radius: 15px;
+            }
+            
+            .day-modal-header {
+                flex-direction: column;
+                gap: 15px;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+            
+            .day-modal-title {
+                font-size: 1.3em;
+            }
+            
+            .modal-actions {
+                gap: 8px;
+            }
+            
+            .save-close-btn {
+                padding: 10px 20px;
+                font-size: 0.85em;
+            }
+            
+            .close-btn {
+                width: 32px;
+                height: 32px;
+                font-size: 1em;
+            }
+            
+            .habit-entry {
+                flex-direction: column;
+                gap: 12px;
+                padding: 12px;
+                text-align: center;
+            }
+            
+            .habit-entry-info {
+                margin-bottom: 5px;
+            }
+            
+            .habit-entry-name {
+                font-size: 1em;
+                margin-bottom: 3px;
+            }
+            
+            .habit-entry-category {
+                font-size: 0.75em;
+            }
+            
+            .status-buttons {
+                gap: 12px;
+                justify-content: center;
+            }
+            
+            .status-btn {
+                width: 50px;
+                height: 50px;
+                font-size: 1.4em;
+                border-radius: 12px;
+            }
+            
+            .habit-section h4 {
+                font-size: 0.85em;
+                margin-bottom: 12px;
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            /* Extra small screens */
+            .login-title {
+                font-size: 1.8em;
+            }
+            
+            .person-selection {
+                max-width: 250px;
+            }
+            
+            .person-card {
+                padding: 25px 15px;
+            }
+            
+            .person-avatar {
+                font-size: 2.5em;
+            }
+            
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .calendar-day {
+                min-height: 30px;
+                padding: 2px;
+            }
+            
+            .day-number {
+                font-size: 0.7em;
+            }
+            
+            .status-buttons {
+                gap: 8px;
+            }
+            
+            .status-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.2em;
+            }
+        }
+        
+        @media (min-width: 769px) and (max-width: 1024px) {
+            /* Tablet styles */
+            .categories-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .stats-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+            
+            .calendar-day {
+                min-height: 50px;
+                padding: 6px;
             }
         }
     </style>
