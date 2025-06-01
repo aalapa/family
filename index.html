@@ -1,4 +1,19 @@
-<!DOCTYPE html>
+<!-- Day Detail Modal -->
+    <div id="dayModal" class="day-modal">
+        <div class="day-modal-content">
+            <div class="day-modal-header">
+                <h3 class="day-modal-title" id="dayModalTitle">Edit Day</h3>
+                <div class="modal-actions">
+                    <button class="save-close-btn" onclick="saveAndCloseDayModal()">✓ Save & Close</button>
+                    <button class="close-btn" onclick="closeDayModal()" title="Close without saving">&times;</button>
+                </div>
+            </div>
+            
+            <div id="dayModalContent">
+                <!-- Habit entries will be populated here -->
+            </div>
+        </div>
+    </div><!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -513,8 +528,143 @@
             opacity: 0.7;
         }
 
-        .habit-section {
-            margin-bottom: 20px;
+        .habits-view {
+            display: none;
+        }
+
+        .habits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+        }
+
+        .habits-header h2 {
+            font-size: 2em;
+            font-weight: 600;
+        }
+
+        .add-habit-btn {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 1em;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .add-habit-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.3);
+        }
+
+        .habits-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .habit-item {
+            background: rgba(255,255,255,0.08);
+            border-radius: 15px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .habit-details {
+            flex: 1;
+        }
+
+        .habit-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .habit-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.9em;
+            opacity: 0.8;
+        }
+
+        .habit-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-btn, .delete-btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9em;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .edit-btn {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .edit-btn:hover {
+            background: rgba(59, 130, 246, 0.3);
+        }
+
+        .delete-btn {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .delete-btn:hover {
+            background: rgba(239, 68, 68, 0.3);
+        }
+
+        .habit-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            font-size: 0.95em;
+        }
+
+        .form-input {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            font-size: 1em;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .form-input::placeholder {
+            color: rgba(255,255,255,0.5);
+        }
+
+        .form-input option {
+            background: #1a1a2e;
+            color: white;
         }
 
         .bonus-task-row {
@@ -1016,6 +1166,7 @@
             <div class="app-nav">
                 <button class="nav-btn active" onclick="showView('dashboard')">Dashboard</button>
                 <button class="nav-btn" onclick="showView('calendar')">Calendar</button>
+                <button class="nav-btn" onclick="showView('habits')">Manage Habits</button>
                 <button class="nav-btn logout-btn" onclick="logout()">Logout</button>
             </div>
         </div>
@@ -1061,21 +1212,68 @@
                 <!-- Calendar will be populated here -->
             </div>
         </div>
+
+        <!-- Manage Habits View -->
+        <div id="habitsView" class="habits-view" style="display: none;">
+            <div class="habits-header">
+                <h2>Manage Habits</h2>
+                <button class="add-habit-btn" onclick="showAddHabitModal()">+ Add New Habit</button>
+            </div>
+            
+            <div class="habits-list" id="habitsList">
+                <!-- Habits will be populated here -->
+            </div>
+        </div>
     </div>
 
-    <!-- Day Detail Modal -->
-    <div id="dayModal" class="day-modal">
+    <!-- Add/Edit Habit Modal -->
+    <div id="habitModal" class="day-modal" style="display: none;">
         <div class="day-modal-content">
             <div class="day-modal-header">
-                <h3 class="day-modal-title" id="dayModalTitle">Edit Day</h3>
+                <h3 class="day-modal-title" id="habitModalTitle">Add New Habit</h3>
                 <div class="modal-actions">
-                    <button class="save-close-btn" onclick="saveAndCloseDayModal()">✓ Save & Close</button>
-                    <button class="close-btn" onclick="closeDayModal()" title="Close without saving">&times;</button>
+                    <button class="save-close-btn" onclick="saveHabit()">✓ Save</button>
+                    <button class="close-btn" onclick="closeHabitModal()" title="Cancel">&times;</button>
                 </div>
             </div>
             
-            <div id="dayModalContent">
-                <!-- Habit entries will be populated here -->
+            <div class="habit-form">
+                <div class="form-group">
+                    <label>Person:</label>
+                    <select id="habitPerson" class="form-input">
+                        <option value="veda">Veda</option>
+                        <option value="radhika">Radhika</option>
+                        <option value="aravind">Aravind</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>Category:</label>
+                    <input type="text" id="habitCategory" class="form-input" placeholder="e.g., Exercise, Learning, Health">
+                </div>
+                
+                <div class="form-group">
+                    <label>Habit Name:</label>
+                    <input type="text" id="habitName" class="form-input" placeholder="e.g., Reading, Push-ups, Yoga">
+                </div>
+                
+                <div class="form-group">
+                    <label>Schedule:</label>
+                    <select id="habitSchedule" class="form-input">
+                        <option value="daily">Daily</option>
+                        <option value="weekdays">Weekdays (Mon-Fri)</option>
+                        <option value="weekends">Weekends (Sat-Sun)</option>
+                        <option value="mon,wed,fri">Mon, Wed, Fri</option>
+                        <option value="tue,thu">Tue, Thu</option>
+                        <option value="sat,sun">Sat, Sun</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="habitRequired" checked> Required habit
+                    </label>
+                </div>
             </div>
         </div>
     </div>
@@ -1282,9 +1480,12 @@
             // Show/hide views
             document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
             document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
+            document.getElementById('habitsView').style.display = view === 'habits' ? 'block' : 'none';
             
             if (view === 'calendar') {
                 updateCalendar();
+            } else if (view === 'habits') {
+                updateHabitsView();
             }
         }
 
