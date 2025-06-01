@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Family Habit Tracker Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            padding: 80px 30px 30px 30px;
+            min-height: 100vh;
+            font-weight: 400;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .title {
+            font-size: 3.2em;
+            font-weight: 800;
+            margin-bottom: 15px;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.02em;
+        }
+
+        .date-info {
+            font-size: 1.4em;
+            opacity: 0.85;
+            margin-bottom: 25px;
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.1em;
+        }
+
+        .legend-square {
+            width: 18px;
+            height: 18px;
+            border-radius: 3px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+        }
+
+        .legend-square.completed {
+            background: #22c55e;
+            border-color: #16a34a;
+        }
+
+        .legend-square.rest {
+            background: #86efac;
+            border-color: #4ade80;
+        }
+
+        .legend-square.today {
+            border: 2px solid #fbbf24;
+            box-shadow: 0 0 8px rgba(251, 191, 36, 0.5);
+        }
+
+        .people-container {
+            display: flex;
+            flex-direction: column;
+            gap: 40px;
+        }
+
+        .person-section {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .person-header {
+            text-align: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255,255,255,0.2);
+        }
+
+        .person-name {
+            font-size: 2.8em;
+            font-weight: 700;
+            margin-bottom: 12px;
+            text-transform: capitalize;
+            letter-spacing: -0.01em;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        .person-name.veda {
+            background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .person-name.radhika {
+            background: linear-gradient(135deg, #4ecdc4 0%, #44a08d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .person-name.aravind {
+            background: linear-gradient(135deg, #45b7d1 0%, #96c93d 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .person-overall-stats {
+            font-size: 1.2em;
+            display: flex;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .overall-stat {
+            text-align: center;
+        }
+
+        .overall-stat-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(600px, 1fr));
+            gap: 25px;
+        }
+
+        .category {
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .category-title {
+            font-size: 1.6em;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .category-stats {
+            font-size: 1em;
+            display: flex;
+            gap: 20px;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 3px;
+        }
+
+        .improvement {
+            color: #4ade80;
+        }
+
+        .decline {
+            color: #f87171;
+        }
+
+        .habits {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .habit-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .habit-name {
+            font-size: 1.1em;
+            font-weight: 500;
+            min-width: 160px;
+            text-align: right;
+        }
+
+        .habit-grid {
+            display: flex;
+            gap: 2px;
+            flex-wrap: wrap;
+        }
+
+        .day-square {
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
+            border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.1);
+            position: relative;
+        }
+
+        .day-square.completed {
+            background: #22c55e;
+            border-color: #16a34a;
+        }
+
+        .day-square.rest {
+            background: #86efac;
+            border-color: #4ade80;
+        }
+
+        .day-square.today {
+            border: 2px solid #fbbf24;
+            box-shadow: 0 0 6px rgba(251, 191, 36, 0.5);
+        }
+
+        .habit-stats {
+            font-size: 0.95em;
+            min-width: 80px;
+            text-align: center;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 2em;
+            padding: 100px;
+        }
+
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid #ef4444;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            font-size: 1.2em;
+        }
+
+        .navigation {
+            position: fixed;
+            top: 20px;
+            right: 25px;
+            display: flex;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        .nav-button {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 12px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-button:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .nav-button.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: rgba(255,255,255,0.3);
+            box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        @media (max-width: 1400px) {
+            .categories {
+                grid-template-columns: 1fr;
+            }
+            .habit-name {
+                min-width: 140px;
+                font-size: 1em;
+            }
+            .day-square {
+                width: 11px;
+                height: 11px;
+            }
+            body {
+                padding: 70px 20px 20px 20px;
+            }
+            .nav-button {
+                padding: 8px 12px;
+                font-size: 0.85em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="navigation">
+        <button class="nav-button active" onclick="showAllPeople()">All</button>
+        <button class="nav-button" onclick="showPerson('veda')">Veda</button>
+        <button class="nav-button" onclick="showPerson('radhika')">Radhika</button>
+        <button class="nav-button" onclick="showPerson('aravind')">Aravind</button>
+        <button class="nav-button" onclick="location.reload()">⟳ Refresh</button>
+    </div>
+
+    <div class="header">
+        <h1 class="title">👨‍👩‍👧‍👦 Family Habit Tracker</h1>
+        <div class="date-info" id="dateInfo"></div>
+        <div class="legend">
+            <div class="legend-item">
+                <div class="legend-square completed"></div>
+                <span>Completed</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-square rest"></div>
+                <span>Rest Day</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-square"></div>
+                <span>Missed</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-square today"></div>
+                <span>Today</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="content">
+        <div class="loading">Loading family habits...</div>
+    </div>
+
+    <script>
+        // Configuration - Update these with your Google Sheets details
+        const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID'; // Replace with your sheet ID
+        const API_KEY = 'YOUR_GOOGLE_API_KEY'; // Replace with your API key
+        
+        // Sample data for demo - replace with actual Google Sheets integration
+        const SAMPLE_DATA = {
+            people: [
+                {
+                    name: 'veda',
+                    categories: [
+                        {
+                            name: 'Learning',
+                            habits: ['Reading', 'Math Practice', 'Piano']
+                        },
+                        {
+                            name: 'Health',
+                            habits: ['Exercise', 'Meditation']
+                        }
+                    ]
+                },
+                {
+                    name: 'radhika',
+                    categories: [
+                        {
+                            name: 'Fitness',
+                            habits: ['Yoga', 'Walking', 'Gym']
+                        },
+                        {
+                            name: 'Wellness',
+                            habits: ['Meditation', 'Journaling']
+                        },
+                        {
+                            name: 'Learning',
+                            habits: ['Reading', 'Online Course']
+                        }
+                    ]
+                },
+                {
+                    name: 'aravind',
+                    categories: [
+                        {
+                            name: 'Exercise',
+                            habits: ['Push-ups', 'Running', 'Gym']
+                        },
+                        {
+                            name: 'Martial Art',
+                            habits: ['Karate Practice', 'Meditation']
+                        },
+                        {
+                            name: 'Reading',
+                            habits: ['Technical Books', 'Fiction']
+                        },
+                        {
+                            name: 'Writing',
+                            habits: ['Journal', 'Blog Posts']
+                        },
+                        {
+                            name: 'Maths',
+                            habits: ['Problem Solving', 'Study']
+                        }
+                    ]
+                }
+            ],
+            entries: []
+        };
+
+        function generateSampleEntries() {
+            const entries = [];
+            const today = new Date();
+            
+            SAMPLE_DATA.people.forEach(person => {
+                person.categories.forEach(category => {
+                    category.habits.forEach(habit => {
+                        for (let i = 0; i < 90; i++) {
+                            const date = new Date(today);
+                            date.setDate(date.getDate() - i);
+                            
+                            // Different completion patterns for each person
+                            let baseRate = 0.5;
+                            if (person.name === 'veda') baseRate = 0.7; // More consistent
+                            if (person.name === 'radhika') baseRate = 0.8; // Most consistent
+                            if (person.name === 'aravind') baseRate = 0.6; // Moderate
+                            
+                            const recentBonus = i < 30 ? 0.2 : 0;
+                            const rand = Math.random() + recentBonus;
+                            let status = 'missed';
+                            
+                            if (rand > (1 - baseRate)) status = 'completed';
+                            else if (rand > (1 - baseRate - 0.1)) status = 'rest';
+                            
+                            entries.push({
+                                date: date.toISOString().split('T')[0],
+                                person: person.name,
+                                category: category.name,
+                                habit: habit,
+                                status: status
+                            });
+                        }
+                    });
+                });
+            });
+            
+            return entries;
+        }
+
+        // Initialize sample data entries
+        SAMPLE_DATA.entries = generateSampleEntries();
+
+        let currentView = 'all';
+
+        function formatDate(date) {
+            return date.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+        }
+
+        function calculateStats(entries, habit, category, person) {
+            const habitEntries = entries.filter(e => 
+                e.habit === habit && 
+                e.category === category && 
+                e.person === person
+            );
+            
+            const recent30 = habitEntries.filter(e => {
+                const entryDate = new Date(e.date);
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                return entryDate >= thirtyDaysAgo;
+            });
+
+            const previous30 = habitEntries.filter(e => {
+                const entryDate = new Date(e.date);
+                const sixtyDaysAgo = new Date();
+                const thirtyDaysAgo = new Date();
+                sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                return entryDate >= sixtyDaysAgo && entryDate < thirtyDaysAgo;
+            });
+
+            const recentCompleted = recent30.filter(e => e.status === 'completed').length;
+            const previousCompleted = previous30.filter(e => e.status === 'completed').length;
+            
+            const recentRate = recent30.length > 0 ? (recentCompleted / recent30.length) * 100 : 0;
+            const previousRate = previous30.length > 0 ? (previousCompleted / previous30.length) * 100 : 0;
+            
+            const improvement = recentRate - previousRate;
+
+            return {
+                current: Math.round(recentRate),
+                improvement: Math.round(improvement)
+            };
+        }
+
+        function calculatePersonOverallStats(entries, person) {
+            const personEntries = entries.filter(e => e.person === person);
+            const recent30 = personEntries.filter(e => {
+                const entryDate = new Date(e.date);
+                const thirtyDaysAgo = new Date();
+                thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+                return entryDate >= thirtyDaysAgo;
+            });
+
+            const completed = recent30.filter(e => e.status === 'completed').length;
+            const total = recent30.length;
+            const overallRate = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+            // Calculate streak
+            let currentStreak = 0;
+            const today = new Date();
+            for (let i = 0; i < 30; i++) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const dayEntries = personEntries.filter(e => e.date === dateStr);
+                const completedToday = dayEntries.filter(e => e.status === 'completed').length;
+                const totalToday = dayEntries.length;
+                
+                if (totalToday > 0 && (completedToday / totalToday) >= 0.7) {
+                    currentStreak++;
+                } else {
+                    break;
+                }
+            }
+
+            return { overallRate, currentStreak };
+        }
+
+        function renderHabitGrid(entries, habit, category, person) {
+            const today = new Date();
+            const grid = [];
+
+            for (let i = 89; i >= 0; i--) {
+                const date = new Date(today);
+                date.setDate(date.getDate() - i);
+                const dateStr = date.toISOString().split('T')[0];
+                
+                const entry = entries.find(e => 
+                    e.date === dateStr && 
+                    e.habit === habit && 
+                    e.category === category &&
+                    e.person === person
+                );
+
+                const isToday = i === 0;
+                const status = entry ? entry.status : 'missed';
+                
+                grid.push(`<div class="day-square ${status} ${isToday ? 'today' : ''}" 
+                    title="${date.toDateString()} - ${status}"></div>`);
+            }
+
+            return grid.join('');
+        }
+
+        function renderPersonSection(person, data) {
+            const overallStats = calculatePersonOverallStats(data.entries, person.name);
+            
+            const categoriesHtml = person.categories.map(category => {
+                const categoryStats = category.habits.reduce((acc, habit) => {
+                    const stats = calculateStats(data.entries, habit, category.name, person.name);
+                    acc.total += stats.current;
+                    acc.improvement += stats.improvement;
+                    return acc;
+                }, { total: 0, improvement: 0 });
+
+                const avgCompletion = Math.round(categoryStats.total / category.habits.length);
+                const avgImprovement = Math.round(categoryStats.improvement / category.habits.length);
+
+                const habitsHtml = category.habits.map(habit => {
+                    const stats = calculateStats(data.entries, habit, category.name, person.name);
+                    const grid = renderHabitGrid(data.entries, habit, category.name, person.name);
+
+                    return `
+                        <div class="habit-row">
+                            <div class="habit-name">${habit}</div>
+                            <div class="habit-grid">${grid}</div>
+                            <div class="habit-stats">
+                                ${stats.current}%
+                                <span class="${stats.improvement >= 0 ? 'improvement' : 'decline'}">
+                                    ${stats.improvement >= 0 ? '+' : ''}${stats.improvement}%
+                                </span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="category">
+                        <div class="category-header">
+                            <div class="category-title">${category.name}</div>
+                            <div class="category-stats">
+                                <div class="stat">
+                                    <div class="stat-value">${avgCompletion}%</div>
+                                    <div>Rate</div>
+                                </div>
+                                <div class="stat">
+                                    <div class="stat-value ${avgImprovement >= 0 ? 'improvement' : 'decline'}">
+                                        ${avgImprovement >= 0 ? '+' : ''}${avgImprovement}%
+                                    </div>
+                                    <div>Trend</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="habits">
+                            ${habitsHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            return `
+                <div class="person-section" data-person="${person.name}">
+                    <div class="person-header">
+                        <div class="person-name ${person.name}">${person.name}</div>
+                        <div class="person-overall-stats">
+                            <div class="overall-stat">
+                                <div class="overall-stat-value">${overallStats.overallRate}%</div>
+                                <div>Overall Completion</div>
+                            </div>
+                            <div class="overall-stat">
+                                <div class="overall-stat-value">${overallStats.currentStreak}</div>
+                                <div>Day Streak</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="categories">
+                        ${categoriesHtml}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderDashboard(data) {
+            const today = new Date();
+            document.getElementById('dateInfo').textContent = formatDate(today);
+
+            const peopleHtml = data.people.map(person => 
+                renderPersonSection(person, data)
+            ).join('');
+
+            document.getElementById('content').innerHTML = `
+                <div class="people-container">
+                    ${peopleHtml}
+                </div>
+            `;
+        }
+
+        function showAllPeople() {
+            currentView = 'all';
+            document.querySelectorAll('.person-section').forEach(section => {
+                section.style.display = 'block';
+            });
+            updateNavButtons();
+        }
+
+        function showPerson(personName) {
+            currentView = personName;
+            document.querySelectorAll('.person-section').forEach(section => {
+                if (section.dataset.person === personName) {
+                    section.style.display = 'block';
+                } else {
+                    section.style.display = 'none';
+                }
+            });
+            updateNavButtons();
+        }
+
+        function updateNavButtons() {
+            document.querySelectorAll('.nav-button').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            if (currentView === 'all') {
+                document.querySelector('.nav-button[onclick="showAllPeople()"]').classList.add('active');
+            } else {
+                document.querySelector(`.nav-button[onclick="showPerson('${currentView}')"]`).classList.add('active');
+            }
+        }
+
+        async function loadFromGoogleSheets() {
+            try {
+                // This would connect to your actual Google Sheets
+                // For now, using sample data
+                setTimeout(() => {
+                    renderDashboard(SAMPLE_DATA);
+                }, 1000);
+                
+            } catch (error) {
+                document.getElementById('content').innerHTML = `
+                    <div class="error">
+                        <h2>⚠️ Error Loading Data</h2>
+                        <p>Unable to connect to Google Sheets. Please check your configuration.</p>
+                        <p>Error: ${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Auto-refresh every 5 minutes
+        function startAutoRefresh() {
+            setInterval(loadFromGoogleSheets, 5 * 60 * 1000);
+        }
+
+        // Initialize
+        window.addEventListener('load', () => {
+            loadFromGoogleSheets();
+            startAutoRefresh();
+        });
+
+        // Keyboard navigation for Fire TV remote
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'F5' || e.key === 'r') {
+                location.reload();
+            }
+            // Arrow key navigation between people
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+                const people = ['all', 'veda', 'radhika', 'aravind'];
+                const currentIndex = people.indexOf(currentView);
+                let newIndex;
+                
+                if (e.key === 'ArrowLeft') {
+                    newIndex = currentIndex > 0 ? currentIndex - 1 : people.length - 1;
+                } else {
+                    newIndex = currentIndex < people.length - 1 ? currentIndex + 1 : 0;
+                }
+                
+                if (people[newIndex] === 'all') {
+                    showAllPeople();
+                } else {
+                    showPerson(people[newIndex]);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
