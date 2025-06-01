@@ -661,38 +661,48 @@
             
             .app-header {
                 flex-direction: column;
-                gap: 15px;
-                padding: 15px;
+                gap: 20px;
+                padding: 20px 15px;
                 margin-bottom: 20px;
             }
             
             .user-info {
-                gap: 10px;
+                gap: 12px;
+                justify-content: center;
+                text-align: center;
             }
             
             .user-avatar {
-                font-size: 2em;
+                font-size: 2.2em;
             }
             
             .user-details h2 {
-                font-size: 1.4em;
+                font-size: 1.5em;
             }
             
             .user-details p {
                 font-size: 0.9em;
+                margin-top: 3px;
             }
             
             .app-nav {
-                gap: 10px;
+                gap: 8px;
                 width: 100%;
-                justify-content: center;
+                display: grid;
+                grid-template-columns: 1fr 1fr 1fr;
             }
             
             .nav-btn {
-                padding: 10px 16px;
-                font-size: 0.85em;
-                flex: 1;
-                max-width: 100px;
+                padding: 12px 8px;
+                font-size: 0.9em;
+                text-align: center;
+                border-radius: 12px;
+                font-weight: 500;
+            }
+            
+            .logout-btn {
+                background: linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%);
+                border-color: rgba(255,255,255,0.3);
             }
             
             /* Dashboard Mobile */
