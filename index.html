@@ -911,37 +911,41 @@
                 categories[habit.category].push(habit);
             });
             
-            // Render categories
+            // Render categories (only if there are scheduled habits)
             const categoriesGrid = document.getElementById('categoriesGrid');
-            let categoriesHtml = Object.keys(categories).map(categoryName => {
-                const categoryHabits = categories[categoryName];
-                const habitsHtml = categoryHabits.map(habit => {
-                    const todayEntry = todayEntries.find(e => e.habit === habit.habit);
-                    const status = todayEntry ? todayEntry.status : 'missed';
+            let categoriesHtml = '';
+            
+            if (Object.keys(categories).length > 0) {
+                categoriesHtml = Object.keys(categories).map(categoryName => {
+                    const categoryHabits = categories[categoryName];
+                    const habitsHtml = categoryHabits.map(habit => {
+                        const todayEntry = todayEntries.find(e => e.habit === habit.habit);
+                        const status = todayEntry ? todayEntry.status : 'missed';
+                        
+                        return `
+                            <div class="habit-row" onclick="openDayModal('${today}')">
+                                <div class="habit-info">
+                                    <div class="habit-name">${habit.habit}</div>
+                                    <div class="habit-schedule">${habit.schedule}</div>
+                                </div>
+                                <div class="habit-status">
+                                    <div class="status-indicator ${status}"></div>
+                                    <span>${status === 'completed' ? 'Done' : status === 'rest' ? 'Rest' : 'Pending'}</span>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
                     
                     return `
-                        <div class="habit-row" onclick="openDayModal('${today}')">
-                            <div class="habit-info">
-                                <div class="habit-name">${habit.habit}</div>
-                                <div class="habit-schedule">${habit.schedule}</div>
+                        <div class="category-card">
+                            <div class="category-header">
+                                <div class="category-title">${categoryName}</div>
                             </div>
-                            <div class="habit-status">
-                                <div class="status-indicator ${status}"></div>
-                                <span>${status === 'completed' ? 'Done' : status === 'rest' ? 'Rest' : 'Pending'}</span>
-                            </div>
+                            ${habitsHtml}
                         </div>
                     `;
                 }).join('');
-                
-                return `
-                    <div class="category-card">
-                        <div class="category-header">
-                            <div class="category-title">${categoryName}</div>
-                        </div>
-                        ${habitsHtml}
-                    </div>
-                `;
-            }).join('');
+            }
             
             // Add bonus task section
             const allUserHabits = userHabits.map(h => h.habit).sort();
