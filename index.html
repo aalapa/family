@@ -1175,20 +1175,10 @@
                     return;
                 }
                 
-                const response = await fetch(APPS_SCRIPT_URL + '?action=getData', {
-                    method: 'GET',
-                    headers: {
-                        'Accept': 'application/json',
-                    },
-                });
+                // Use JSONP to avoid CORS issues for reading
+                const data = await loadDataViaJSONP();
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                
-                const data = await response.json();
-                
-                if (data.success) {
+                if (data && data.success) {
                     habitsData = data.habits || SAMPLE_HABITS;
                     entriesData = data.entries || [];
                     console.log('Successfully loaded data from Google Sheets:', {
@@ -1196,7 +1186,7 @@
                         entries: entriesData.length
                     });
                 } else {
-                    throw new Error(data.error || 'Unknown error from Apps Script');
+                    throw new Error(data?.error || 'Unknown error from Apps Script');
                 }
                 
             } catch (error) {
@@ -1205,6 +1195,40 @@
                 habitsData = SAMPLE_HABITS;
                 entriesData = generateSampleEntries();
             }
+        }
+
+        function loadDataViaJSONP() {
+            return new Promise((resolve, reject) => {
+                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+                
+                // Create callback function
+                window[callbackName] = function(data) {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    resolve(data);
+                };
+                
+                // Create script tag
+                const script = document.createElement('script');
+                script.src = APPS_SCRIPT_URL + '?callback=' + callbackName;
+                script.onerror = function() {
+                    delete window[callbackName];
+                    document.body.removeChild(script);
+                    reject(new Error('JSONP request failed'));
+                };
+                
+                // Add to page
+                document.body.appendChild(script);
+                
+                // Timeout after 10 seconds
+                setTimeout(() => {
+                    if (window[callbackName]) {
+                        delete window[callbackName];
+                        document.body.removeChild(script);
+                        reject(new Error('JSONP request timeout'));
+                    }
+                }, 10000);
+            });
         }
 
         function loginPerson(person) {
