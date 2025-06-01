@@ -1384,10 +1384,10 @@
                 
                 // Load habits from Firestore
                 const habitsSnapshot = await db.collection('habits').get();
-                window.habitsData = [];
+                habitsData = [];
                 
                 habitsSnapshot.forEach(doc => {
-                    window.habitsData.push({
+                    habitsData.push({
                         id: doc.id,
                         ...doc.data()
                     });
@@ -1395,33 +1395,33 @@
                 
                 // Load entries from Firestore
                 const entriesSnapshot = await db.collection('entries').get();
-                window.entriesData = [];
+                entriesData = [];
                 
                 entriesSnapshot.forEach(doc => {
-                    window.entriesData.push({
+                    entriesData.push({
                         id: doc.id,
                         ...doc.data()
                     });
                 });
                 
                 // If no data in Firestore, initialize with sample data
-                if (window.habitsData.length === 0) {
+                if (habitsData.length === 0) {
                     console.log('No habits found, initializing with sample data...');
                     await initializeFirestoreData();
-                    window.habitsData = SAMPLE_HABITS;
-                    window.entriesData = generateSampleEntries();
+                    habitsData = SAMPLE_HABITS;
+                    entriesData = generateSampleEntries();
                 }
                 
                 console.log('Successfully loaded data from Firestore:', {
-                    habits: window.habitsData.length,
-                    entries: window.entriesData.length
+                    habits: habitsData.length,
+                    entries: entriesData.length
                 });
                 
             } catch (error) {
                 console.error('Error loading data from Firestore:', error);
                 console.log('Falling back to sample data');
-                window.habitsData = SAMPLE_HABITS;
-                window.entriesData = generateSampleEntries();
+                habitsData = SAMPLE_HABITS;
+                entriesData = generateSampleEntries();
             }
         }
 
@@ -1846,44 +1846,69 @@
         }
 
         async function updateHabitStatus(habit, category, status) {
-            if (!selectedDate || !currentUser) return;
+            if (!currentUser) return;
             
-            // Update local data immediately (optimistic update)
-            window.entriesData = window.entriesData.filter(e => 
-                !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
-            );
+            // If no selectedDate is provided (for bonus tasks), use today's date
+            if (!selectedDate) {
+                selectedDate = new Date().toISOString().split('T')[0];
+            }
             
-            const newEntry = {
-                date: selectedDate,
-                person: currentUser,
-                category: category,
-                habit: habit,
-                status: status,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            };
+            console.log(`Updating ${habit} to status ${status} for ${selectedDate}`);
             
-            window.entriesData.push(newEntry);
-            
-            // Refresh the modal and views immediately
-            openDayModal(selectedDate);
-            updateDashboard();
-            updateCalendar();
-            
-            // Save to Firestore in background
             try {
-                console.log(`Saving ${habit} = ${status} for ${selectedDate} to Firestore...`);
-                
                 // Create unique ID for this entry
                 const entryId = `${currentUser}_${selectedDate}_${habit}`.replace(/[^a-zA-Z0-9]/g, '_');
                 
+                // Create entry object
+                const newEntry = {
+                    date: selectedDate,
+                    person: currentUser,
+                    category: category,
+                    habit: habit,
+                    status: status,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Update local data immediately (optimistic update)
+                // First remove any existing entry for this habit on this day
+                entriesData = entriesData.filter(e => 
+                    !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
+                );
+                
+                // Add the new entry
+                entriesData.push(newEntry);
+                
                 // Save to Firestore
                 await db.collection('entries').doc(entryId).set(newEntry);
-                
                 console.log('Successfully saved to Firestore');
                 
+                // Show visual feedback (manually update buttons if needed)
+                if (document.getElementById('dayModal').style.display === 'flex') {
+                    // Update the modal to show the change - find the buttons for this habit
+                    const buttons = document.querySelectorAll(`.status-btn[onclick*="${habit}"]`);
+                    buttons.forEach(btn => {
+                        // Remove active class from all buttons for this habit
+                        if (btn.classList.contains('active')) {
+                            btn.classList.remove('active');
+                        }
+                        
+                        // Add active class to the clicked button
+                        if (btn.classList.contains(status)) {
+                            btn.classList.add('active');
+                        }
+                    });
+                }
+                
+                // Refresh all views to ensure consistency
+                updateDashboard();
+                updateCalendar();
+                if (document.getElementById('dayModal').style.display === 'flex') {
+                    openDayModal(selectedDate);
+                }
+                
             } catch (error) {
-                console.error('Error saving to Firestore:', error);
-                // Could show a notification to user here
+                console.error('Error updating habit status:', error);
+                alert('Error saving your change. Please try again.');
             }
         }
 
@@ -2080,6 +2105,111 @@
             } catch (error) {
                 console.error('Error deleting entry:', error);
                 // Could show a notification to user here
+            }
+        }
+
+        async function addBonusTask() {
+            if (!currentUser) return;
+            
+            const habitSelect = document.getElementById('bonusHabitSelect');
+            const habitName = habitSelect.value;
+            
+            if (!habitName) {
+                alert('Please select a habit to add');
+                return;
+            }
+            
+            // Find the habit details
+            const habit = habitsData.find(h => h.person === currentUser && h.habit === habitName);
+            if (!habit) return;
+            
+            // Get today's date
+            const today = new Date().toISOString().split('T')[0];
+            
+            // Create entry for today
+            try {
+                const entryId = `${currentUser}_${today}_${habitName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                const newEntry = {
+                    date: today,
+                    person: currentUser,
+                    category: habit.category,
+                    habit: habitName,
+                    status: 'completed',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Update local data
+                entriesData = entriesData.filter(e => 
+                    !(e.person === currentUser && e.date === today && e.habit === habitName)
+                );
+                entriesData.push(newEntry);
+                
+                // Save to Firestore
+                await db.collection('entries').doc(entryId).set(newEntry);
+                
+                // Reset select
+                habitSelect.value = '';
+                
+                // Refresh views
+                updateDashboard();
+                updateCalendar();
+                
+                console.log('Bonus task added successfully');
+            } catch (error) {
+                console.error('Error adding bonus task:', error);
+                alert('Error adding bonus task. Please try again.');
+            }
+        }
+        
+        async function addBonusTaskToDay() {
+            if (!currentUser || !selectedDate) return;
+            
+            const habitSelect = document.getElementById('modalBonusSelect');
+            const habitValue = habitSelect.value;
+            
+            if (!habitValue) {
+                alert('Please select a habit to add');
+                return;
+            }
+            
+            // Split the value to get habit name and category
+            const [habitName, category] = habitValue.split('|');
+            
+            // Create entry
+            try {
+                const entryId = `${currentUser}_${selectedDate}_${habitName}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                const newEntry = {
+                    date: selectedDate,
+                    person: currentUser,
+                    category: category,
+                    habit: habitName,
+                    status: 'completed',
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Update local data
+                entriesData = entriesData.filter(e => 
+                    !(e.person === currentUser && e.date === selectedDate && e.habit === habitName)
+                );
+                entriesData.push(newEntry);
+                
+                // Save to Firestore
+                await db.collection('entries').doc(entryId).set(newEntry);
+                
+                // Reset select
+                habitSelect.value = '';
+                
+                // Refresh views
+                openDayModal(selectedDate);
+                updateDashboard();
+                updateCalendar();
+                
+                console.log('Bonus task added successfully to selected day');
+            } catch (error) {
+                console.error('Error adding bonus task to day:', error);
+                alert('Error adding bonus task. Please try again.');
             }
         }
     </script>
