@@ -369,8 +369,8 @@
 
     <script>
         // Configuration - Update these with your Google Sheets details
-        const SHEET_ID = 'YOUR_GOOGLE_SHEET_ID'; // Replace with your sheet ID
-        const API_KEY = 'YOUR_GOOGLE_API_KEY'; // Replace with your API key
+        const SHEET_ID = '1w2JDjLzGSxorjlOZb9A7Hf6V0CDdLt_QpBBckX4er9A';
+        const API_KEY = 'AIzaSyBZEQeeQHoX5Zak2dFlERfkW6atzPkg8tg';
         
         // Sample data for demo - replace with actual Google Sheets integration
         const SAMPLE_DATA = {
@@ -710,22 +710,103 @@
             }
         }
 
+        function processGoogleSheetsData(peopleData, entriesData) {
+            if (!peopleData.values || !entriesData.values) {
+                console.log('No data found in sheets, using sample data');
+                return SAMPLE_DATA;
+            }
+
+            // Process people data (skip header row)
+            const peopleRows = peopleData.values.slice(1);
+            const peopleMap = {};
+
+            peopleRows.forEach(row => {
+                const [person, category, habit] = row;
+                if (!person || !category || !habit) return;
+
+                if (!peopleMap[person]) {
+                    peopleMap[person] = { name: person, categories: [] };
+                }
+
+                let categoryObj = peopleMap[person].categories.find(c => c.name === category);
+                if (!categoryObj) {
+                    categoryObj = { name: category, habits: [] };
+                    peopleMap[person].categories.push(categoryObj);
+                }
+
+                if (!categoryObj.habits.includes(habit)) {
+                    categoryObj.habits.push(habit);
+                }
+            });
+
+            // Process entries data (skip header row)
+            const entriesRows = entriesData.values.slice(1);
+            const entries = entriesRows.map(row => {
+                const [date, person, category, habit, status] = row;
+                return { date, person, category, habit, status };
+            }).filter(entry => entry.date && entry.person);
+
+            return {
+                people: Object.values(peopleMap),
+                entries: entries
+            };
+        }
+
         async function loadFromGoogleSheets() {
             try {
-                // This would connect to your actual Google Sheets
-                // For now, using sample data
-                setTimeout(() => {
-                    renderDashboard(SAMPLE_DATA);
-                }, 1000);
+                console.log('Loading data from Google Sheets...');
+                
+                // Load people and habits
+                const peopleResponse = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/People!A:C?key=${API_KEY}`
+                );
+                
+                if (!peopleResponse.ok) {
+                    throw new Error(`People sheet error: ${peopleResponse.status} ${peopleResponse.statusText}`);
+                }
+                
+                const peopleData = await peopleResponse.json();
+                
+                // Load entries
+                const entriesResponse = await fetch(
+                    `https://sheets.googleapis.com/v4/spreadsheets/${SHEET_ID}/values/Entries!A:E?key=${API_KEY}`
+                );
+                
+                if (!entriesResponse.ok) {
+                    throw new Error(`Entries sheet error: ${entriesResponse.status} ${entriesResponse.statusText}`);
+                }
+                
+                const entriesData = await entriesResponse.json();
+                
+                // Process the data
+                const processedData = processGoogleSheetsData(peopleData, entriesData);
+                console.log('Successfully loaded data from Google Sheets');
+                renderDashboard(processedData);
                 
             } catch (error) {
+                console.error('Error loading from Google Sheets:', error);
+                
+                // Show error with fallback to sample data
                 document.getElementById('content').innerHTML = `
                     <div class="error">
-                        <h2>⚠️ Error Loading Data</h2>
-                        <p>Unable to connect to Google Sheets. Please check your configuration.</p>
-                        <p>Error: ${error.message}</p>
+                        <h2>⚠️ Google Sheets Connection Issue</h2>
+                        <p>Unable to load data from Google Sheets. Showing sample data instead.</p>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Troubleshooting:</strong></p>
+                        <ul style="text-align: left; max-width: 600px; margin: 0 auto;">
+                            <li>Make sure your Google Sheet is publicly viewable</li>
+                            <li>Check that you have sheets named "People" and "Entries"</li>
+                            <li>Verify your API key is valid and has Google Sheets API enabled</li>
+                            <li>Ensure your sheet structure matches the expected format</li>
+                        </ul>
+                        <p style="margin-top: 20px;"><em>Using sample data for demonstration...</em></p>
                     </div>
                 `;
+                
+                // Fall back to sample data after showing error
+                setTimeout(() => {
+                    renderDashboard(SAMPLE_DATA);
+                }, 3000);
             }
         }
 
