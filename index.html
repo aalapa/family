@@ -1080,9 +1080,25 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
     <script>
+        // Firebase Configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyC_vmlSRAJM3vG5fpT1t1KPQgSYz_ibf5Q",
+            authDomain: "family-habit-tracker.firebaseapp.com",
+            projectId: "family-habit-tracker",
+            storageBucket: "family-habit-tracker.firebasestorage.app",
+            messagingSenderId: "266358836502",
+            appId: "1:266358836502:web:cc10ad06b0792310dfd437"
+        };
+
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+
         // Configuration
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxmR1zQstIn_ZeXrod0eji7TPuOqzN_ZuJlxDupc7TRY7O4AEll7adZBN22HJh-fCg_mg/exec';
+        const APPS_SCRIPT_URL = ''; // Not needed anymore
         const SHEET_ID = '1w2JDjLzGSxorjlOZb9A7Hf6V0CDdLt_QpBBckX4er9A';
         const API_KEY = 'AIzaSyBZEQeeQHoX5Zak2dFlERfkW6atzPkg8tg';
 
@@ -1166,75 +1182,67 @@
 
         async function loadData() {
             try {
-                console.log('Loading data from Google Apps Script...');
+                console.log('Loading data from Firestore...');
                 
-                if (!APPS_SCRIPT_URL || APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_URL_HERE') {
-                    console.log('Apps Script URL not configured, using sample data');
-                    habitsData = SAMPLE_HABITS;
-                    entriesData = generateSampleEntries();
-                    return;
-                }
+                // Load habits from Firestore
+                const habitsSnapshot = await db.collection('habits').get();
+                window.habitsData = [];
                 
-                // Use JSONP to avoid CORS issues completely
-                const data = await loadDataViaJSONP();
-                
-                if (data && data.success) {
-                    habitsData = data.habits || SAMPLE_HABITS;
-                    entriesData = data.entries || [];
-                    console.log('Successfully loaded data from Google Sheets:', {
-                        habits: habitsData.length,
-                        entries: entriesData.length
+                habitsSnapshot.forEach(doc => {
+                    window.habitsData.push({
+                        id: doc.id,
+                        ...doc.data()
                     });
-                } else {
-                    throw new Error(data?.error || 'Unknown error from Apps Script');
+                });
+                
+                // Load entries from Firestore
+                const entriesSnapshot = await db.collection('entries').get();
+                window.entriesData = [];
+                
+                entriesSnapshot.forEach(doc => {
+                    window.entriesData.push({
+                        id: doc.id,
+                        ...doc.data()
+                    });
+                });
+                
+                // If no data in Firestore, initialize with sample data
+                if (window.habitsData.length === 0) {
+                    console.log('No habits found, initializing with sample data...');
+                    await initializeFirestoreData();
+                    window.habitsData = SAMPLE_HABITS;
+                    window.entriesData = generateSampleEntries();
                 }
+                
+                console.log('Successfully loaded data from Firestore:', {
+                    habits: window.habitsData.length,
+                    entries: window.entriesData.length
+                });
                 
             } catch (error) {
-                console.error('Error loading data from Google Sheets:', error);
+                console.error('Error loading data from Firestore:', error);
                 console.log('Falling back to sample data');
-                habitsData = SAMPLE_HABITS;
-                entriesData = generateSampleEntries();
+                window.habitsData = SAMPLE_HABITS;
+                window.entriesData = generateSampleEntries();
             }
         }
 
-        function loadDataViaJSONP() {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
+        async function initializeFirestoreData() {
+            try {
+                // Initialize habits in Firestore
+                const batch = db.batch();
                 
-                // Create callback function
-                window[callbackName] = function(data) {
-                    delete window[callbackName];
-                    if (document.body.contains(script)) {
-                        document.body.removeChild(script);
-                    }
-                    resolve(data);
-                };
+                SAMPLE_HABITS.forEach((habit, index) => {
+                    const habitRef = db.collection('habits').doc(`habit_${index}`);
+                    batch.set(habitRef, habit);
+                });
                 
-                // Create script tag
-                const script = document.createElement('script');
-                script.src = APPS_SCRIPT_URL + '?callback=' + callbackName + '&action=getData';
-                script.onerror = function() {
-                    delete window[callbackName];
-                    if (document.body.contains(script)) {
-                        document.body.removeChild(script);
-                    }
-                    reject(new Error('JSONP request failed'));
-                };
+                await batch.commit();
+                console.log('Initialized Firestore with sample habits');
                 
-                // Add to page
-                document.body.appendChild(script);
-                
-                // Timeout after 15 seconds
-                setTimeout(() => {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        if (document.body.contains(script)) {
-                            document.body.removeChild(script);
-                        }
-                        reject(new Error('JSONP request timeout'));
-                    }
-                }, 15000);
-            });
+            } catch (error) {
+                console.error('Error initializing Firestore data:', error);
+            }
         }
 
         function loginPerson(person) {
@@ -1580,99 +1588,42 @@
             if (!selectedDate || !currentUser) return;
             
             // Update local data immediately (optimistic update)
-            entriesData = entriesData.filter(e => 
+            window.entriesData = window.entriesData.filter(e => 
                 !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
             );
             
-            entriesData.push({
+            const newEntry = {
                 date: selectedDate,
                 person: currentUser,
                 category: category,
                 habit: habit,
-                status: status
-            });
+                status: status,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            window.entriesData.push(newEntry);
             
             // Refresh the modal and views immediately
             openDayModal(selectedDate);
             updateDashboard();
             updateCalendar();
             
-            // Save to Google Sheets using JSONP
+            // Save to Firestore in background
             try {
-                if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
-                    console.log(`Saving ${habit} = ${status} for ${selectedDate} to Google Sheets...`);
-                    
-                    const result = await saveDataViaJSONP({
-                        action: 'updateEntry',
-                        date: selectedDate,
-                        person: currentUser,
-                        category: category,
-                        habit: habit,
-                        status: status
-                    });
-                    
-                    if (result && result.success) {
-                        console.log('Successfully saved to Google Sheets');
-                    } else {
-                        console.error('Error saving to Google Sheets:', result?.error);
-                    }
-                } else {
-                    console.log('Apps Script not configured - change saved locally only');
-                }
+                console.log(`Saving ${habit} = ${status} for ${selectedDate} to Firestore...`);
+                
+                // Create unique ID for this entry
+                const entryId = `${currentUser}_${selectedDate}_${habit}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                // Save to Firestore
+                await db.collection('entries').doc(entryId).set(newEntry);
+                
+                console.log('Successfully saved to Firestore');
+                
             } catch (error) {
-                console.error('Error saving to Google Sheets:', error);
+                console.error('Error saving to Firestore:', error);
+                // Could show a notification to user here
             }
-        }
-
-        function saveDataViaJSONP(data) {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_save_callback_' + Math.round(100000 * Math.random());
-                
-                // Create callback function
-                window[callbackName] = function(result) {
-                    delete window[callbackName];
-                    if (document.body.contains(script)) {
-                        document.body.removeChild(script);
-                    }
-                    resolve(result);
-                };
-                
-                // Encode the data as URL parameters
-                const params = new URLSearchParams({
-                    callback: callbackName,
-                    action: 'updateEntry',
-                    date: data.date,
-                    person: data.person,
-                    category: data.category,
-                    habit: data.habit,
-                    status: data.status
-                });
-                
-                // Create script tag
-                const script = document.createElement('script');
-                script.src = APPS_SCRIPT_URL + '?' + params.toString();
-                script.onerror = function() {
-                    delete window[callbackName];
-                    if (document.body.contains(script)) {
-                        document.body.removeChild(script);
-                    }
-                    reject(new Error('JSONP save request failed'));
-                };
-                
-                // Add to page
-                document.body.appendChild(script);
-                
-                // Timeout after 15 seconds
-                setTimeout(() => {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        if (document.body.contains(script)) {
-                            document.body.removeChild(script);
-                        }
-                        reject(new Error('JSONP save request timeout'));
-                    }
-                }, 15000);
-            });
         }
 
         // Keyboard navigation for Fire TV
