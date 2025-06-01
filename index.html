@@ -1175,10 +1175,21 @@
                     return;
                 }
                 
-                // Use JSONP to avoid CORS issues for reading
-                const data = await loadDataViaJSONP();
+                // Use regular fetch since Netlify handles CORS properly
+                const response = await fetch(APPS_SCRIPT_URL + '?action=getData', {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                    },
+                });
                 
-                if (data && data.success) {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.success) {
                     habitsData = data.habits || SAMPLE_HABITS;
                     entriesData = data.entries || [];
                     console.log('Successfully loaded data from Google Sheets:', {
@@ -1186,7 +1197,7 @@
                         entries: entriesData.length
                     });
                 } else {
-                    throw new Error(data?.error || 'Unknown error from Apps Script');
+                    throw new Error(data.error || 'Unknown error from Apps Script');
                 }
                 
             } catch (error) {
@@ -1195,40 +1206,6 @@
                 habitsData = SAMPLE_HABITS;
                 entriesData = generateSampleEntries();
             }
-        }
-
-        function loadDataViaJSONP() {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_callback_' + Math.round(100000 * Math.random());
-                
-                // Create callback function
-                window[callbackName] = function(data) {
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    resolve(data);
-                };
-                
-                // Create script tag
-                const script = document.createElement('script');
-                script.src = APPS_SCRIPT_URL + '?callback=' + callbackName;
-                script.onerror = function() {
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    reject(new Error('JSONP request failed'));
-                };
-                
-                // Add to page
-                document.body.appendChild(script);
-                
-                // Timeout after 10 seconds
-                setTimeout(() => {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        document.body.removeChild(script);
-                        reject(new Error('JSONP request timeout'));
-                    }
-                }, 10000);
-            });
         }
 
         function loginPerson(person) {
@@ -1591,12 +1568,12 @@
             updateDashboard();
             updateCalendar();
             
-            // Save to Google Sheets in background using JSONP
+            // Save to Google Sheets using regular fetch (Netlify handles CORS)
             try {
                 if (APPS_SCRIPT_URL && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_URL_HERE') {
                     console.log(`Saving ${habit} = ${status} for ${selectedDate} to Google Sheets...`);
                     
-                    const result = await saveDataViaJSONP({
+                    const params = new URLSearchParams({
                         action: 'updateEntry',
                         date: selectedDate,
                         person: currentUser,
@@ -1605,64 +1582,30 @@
                         status: status
                     });
                     
-                    if (result && result.success) {
+                    const response = await fetch(APPS_SCRIPT_URL + '?' + params.toString(), {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status} - ${response.statusText}`);
+                    }
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
                         console.log('Successfully saved to Google Sheets');
                     } else {
-                        console.error('Error saving to Google Sheets:', result?.error);
-                        // Could show a notification to user here
+                        console.error('Error saving to Google Sheets:', result.error);
                     }
                 } else {
                     console.log('Apps Script not configured - change saved locally only');
                 }
             } catch (error) {
                 console.error('Error saving to Google Sheets:', error);
-                // Could show a notification to user here
             }
-        }
-
-        function saveDataViaJSONP(data) {
-            return new Promise((resolve, reject) => {
-                const callbackName = 'jsonp_save_callback_' + Math.round(100000 * Math.random());
-                
-                // Create callback function
-                window[callbackName] = function(result) {
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    resolve(result);
-                };
-                
-                // Encode the data as URL parameters
-                const params = new URLSearchParams({
-                    callback: callbackName,
-                    action: 'updateEntry',
-                    date: data.date,
-                    person: data.person,
-                    category: data.category,
-                    habit: data.habit,
-                    status: data.status
-                });
-                
-                // Create script tag
-                const script = document.createElement('script');
-                script.src = APPS_SCRIPT_URL + '?' + params.toString();
-                script.onerror = function() {
-                    delete window[callbackName];
-                    document.body.removeChild(script);
-                    reject(new Error('JSONP save request failed'));
-                };
-                
-                // Add to page
-                document.body.appendChild(script);
-                
-                // Timeout after 10 seconds
-                setTimeout(() => {
-                    if (window[callbackName]) {
-                        delete window[callbackName];
-                        document.body.removeChild(script);
-                        reject(new Error('JSONP save request timeout'));
-                    }
-                }, 10000);
-            });
         }
 
         // Keyboard navigation for Fire TV
