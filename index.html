@@ -1083,16 +1083,177 @@
         }
 
         function showAddHabitModal() {
-            alert('Add habit functionality - coming soon!');
+            const habitName = prompt("Enter habit name:");
+            if (!habitName || habitName.trim() === '') return;
+            
+            const category = prompt("Enter category (e.g., Fitness, Learning, Health):");
+            if (!category || category.trim() === '') return;
+            
+            const scheduleOptions = [
+                "daily",
+                "weekdays", 
+                "weekends",
+                "mon,wed,fri",
+                "tue,thu,sat",
+                "mon",
+                "tue", 
+                "wed",
+                "thu",
+                "fri",
+                "sat",
+                "sun"
+            ];
+            
+            const schedule = prompt(`Enter schedule. Options:\n- daily\n- weekdays\n- weekends\n- specific days (e.g., mon,wed,fri)\n- single day (e.g., mon)\n\nEnter your choice:`);
+            if (!schedule || schedule.trim() === '') return;
+            
+            addNewHabit(habitName.trim(), category.trim(), schedule.trim());
         }
 
-        function editHabit(habitName) {
-            alert(`Edit habit "${habitName}" - functionality coming soon!`);
+        async function addNewHabit(habitName, category, schedule) {
+            try {
+                const newHabit = {
+                    person: currentUser,
+                    category: category,
+                    habit: habitName,
+                    schedule: schedule,
+                    required: true
+                };
+                
+                // Add to local data
+                habitsData.push(newHabit);
+                
+                // Save to Firestore
+                const habitRef = db.collection('habits').doc();
+                await habitRef.set(newHabit);
+                
+                console.log('Successfully added new habit');
+                
+                // Refresh all views
+                updateDashboard();
+                updateCalendar();
+                updateHabitsView();
+                
+                alert(`✅ Successfully added "${habitName}" to ${category}!`);
+                
+            } catch (error) {
+                console.error('Error adding habit:', error);
+                alert('Error adding habit. Please try again.');
+            }
         }
 
-        function deleteHabit(habitName) {
-            if (confirm(`Are you sure you want to delete the habit "${habitName}"?`)) {
-                alert('Delete functionality - coming soon!');
+        async function editHabit(habitName) {
+            const habit = habitsData.find(h => h.person === currentUser && h.habit === habitName);
+            if (!habit) {
+                alert('Habit not found!');
+                return;
+            }
+            
+            const newName = prompt("Enter new habit name:", habit.habit);
+            if (!newName || newName.trim() === '') return;
+            
+            const newCategory = prompt("Enter new category:", habit.category);
+            if (!newCategory || newCategory.trim() === '') return;
+            
+            const newSchedule = prompt(`Enter new schedule:\n- daily\n- weekdays\n- weekends\n- specific days (e.g., mon,wed,fri)\n- single day (e.g., mon)`, habit.schedule);
+            if (!newSchedule || newSchedule.trim() === '') return;
+            
+            try {
+                // Update local data
+                const habitIndex = habitsData.findIndex(h => h.person === currentUser && h.habit === habitName);
+                if (habitIndex !== -1) {
+                    const oldHabitName = habitsData[habitIndex].habit;
+                    habitsData[habitIndex].habit = newName.trim();
+                    habitsData[habitIndex].category = newCategory.trim();
+                    habitsData[habitIndex].schedule = newSchedule.trim();
+                    
+                    // Update Firestore - find the document and update it
+                    const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', oldHabitName).get();
+                    
+                    if (!habitsSnapshot.empty) {
+                        const doc = habitsSnapshot.docs[0];
+                        await doc.ref.update({
+                            habit: newName.trim(),
+                            category: newCategory.trim(),
+                            schedule: newSchedule.trim()
+                        });
+                    }
+                    
+                    // Update all entries that reference the old habit name
+                    if (oldHabitName !== newName.trim()) {
+                        entriesData.forEach(entry => {
+                            if (entry.person === currentUser && entry.habit === oldHabitName) {
+                                entry.habit = newName.trim();
+                                entry.category = newCategory.trim();
+                            }
+                        });
+                        
+                        // Update entries in Firestore
+                        const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', oldHabitName).get();
+                        const batch = db.batch();
+                        
+                        entriesSnapshot.forEach(doc => {
+                            batch.update(doc.ref, {
+                                habit: newName.trim(),
+                                category: newCategory.trim()
+                            });
+                        });
+                        
+                        await batch.commit();
+                    }
+                }
+                
+                // Refresh all views
+                updateDashboard();
+                updateCalendar();
+                updateHabitsView();
+                
+                alert(`✅ Successfully updated "${newName}"!`);
+                
+            } catch (error) {
+                console.error('Error updating habit:', error);
+                alert('Error updating habit. Please try again.');
+            }
+        }
+
+        async function deleteHabit(habitName) {
+            if (!confirm(`Are you sure you want to delete "${habitName}"?\n\nThis will also delete ALL your progress/entries for this habit. This action cannot be undone.`)) {
+                return;
+            }
+            
+            try {
+                // Remove from local data
+                habitsData = habitsData.filter(h => !(h.person === currentUser && h.habit === habitName));
+                entriesData = entriesData.filter(e => !(e.person === currentUser && e.habit === habitName));
+                
+                // Delete from Firestore
+                const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', habitName).get();
+                const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', habitName).get();
+                
+                const batch = db.batch();
+                
+                // Delete habit documents
+                habitsSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                // Delete all related entries
+                entriesSnapshot.forEach(doc => {
+                    batch.delete(doc.ref);
+                });
+                
+                await batch.commit();
+                
+                // Refresh all views
+                updateDashboard();
+                updateCalendar();
+                updateHabitsView();
+                
+                alert(`🗑️ Successfully deleted "${habitName}" and all related data.`);
+                
+            } catch (error) {
+                console.error('Error deleting habit:', error);
+                alert('Error deleting habit. Please try again.');
             }
         }
 
@@ -1220,4 +1381,5 @@
         });
     </script>
 </body>
+</html>
 </html>
