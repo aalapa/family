@@ -1013,76 +1013,6 @@
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-
-    <script>
-        async function updateHabitStatus(habit, category, status) {
-            if (!currentUser) return;
-            
-            // If no selectedDate is provided (for bonus tasks), use today's date
-            if (!selectedDate) {
-                selectedDate = formatDateAsString(new Date());
-            }
-            
-            console.log(`Updating ${habit} to status ${status} for ${selectedDate}`);
-            
-            try {
-                // Create unique ID for this entry
-                const entryId = `${currentUser}_${selectedDate}_${habit}`.replace(/[^a-zA-Z0-9]/g, '_');
-                
-                // Create entry object
-                const newEntry = {
-                    date: selectedDate,
-                    person: currentUser,
-                    category: category,
-                    habit: habit,
-                    status: status,
-                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                // Update local data immediately (optimistic update)
-                // First remove any existing entry for this habit on this day
-                entriesData = entriesData.filter(e => 
-                    !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
-                );
-                
-                // Add the new entry
-                entriesData.push(newEntry);
-                
-                // Save to Firestore
-                await db.collection('entries').doc(entryId).set(newEntry);
-                console.log('Successfully saved to Firestore');
-                
-                // Update visual feedback immediately without full refresh
-                if (document.getElementById('dayModal').style.display === 'flex') {
-                    // Find and update the buttons for this specific habit
-                    const habitEntries = document.querySelectorAll('.habit-entry');
-                    habitEntries.forEach(entry => {
-                        const habitNameEl = entry.querySelector('.habit-entry-name');
-                        if (habitNameEl && habitNameEl.textContent === habit) {
-                            // Remove active class from all status buttons in this entry
-                            const statusButtons = entry.querySelectorAll('.status-btn');
-                            statusButtons.forEach(btn => btn.classList.remove('active'));
-                            
-                            // Add active class to the clicked status button
-                            const targetButton = entry.querySelector(`.status-btn.${status}`);
-                            if (targetButton) {
-                                targetButton.classList.add('active');
-                            }
-                        }
-                    });
-                }
-                
-                // Only refresh dashboard and calendar, not the modal
-                updateDashboard();
-                updateCalendar();
-                
-            } catch (error) {
-                console.error('Error updating habit status:', error);
-                showNotification('Error saving your change. Please try again.', 'error');
-            }
-        }
-    </script>
-
     <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
     <!-- Login Screen -->
@@ -1206,6 +1136,7 @@
         let currentDate = new Date();
         let selectedDate = null;
         let categoryColors = {}; // Store category color preferences
+        let currentEditingHabit = null; // Track which habit is being edited
 
         // Predefined color palette for categories
         const COLOR_PALETTE = [
@@ -1225,6 +1156,27 @@
             '#6c5ce7', // Violet
             '#00b894', // Green
             '#e17055'  // Coral
+        ];
+
+        // User avatars
+        const userAvatars = {
+            veda: '👧',
+            radhika: '👩',
+            aravind: '👨'
+        };
+
+        // Sample data for testing
+        const SAMPLE_HABITS = [
+            { person: 'veda', category: 'Learning', habit: 'Reading', schedule: 'daily', required: true },
+            { person: 'veda', category: 'Learning', habit: 'Math Practice', schedule: 'weekdays', required: true },
+            { person: 'veda', category: 'Learning', habit: 'Piano', schedule: 'mon,wed,fri', required: true },
+            { person: 'veda', category: 'Health', habit: 'Exercise', schedule: 'daily', required: true },
+            { person: 'radhika', category: 'Fitness', habit: 'Yoga', schedule: 'daily', required: true },
+            { person: 'radhika', category: 'Fitness', habit: 'Walking', schedule: 'daily', required: false },
+            { person: 'radhika', category: 'Wellness', habit: 'Meditation', schedule: 'daily', required: true },
+            { person: 'aravind', category: 'Exercise', habit: 'Push-ups', schedule: 'daily', required: true },
+            { person: 'aravind', category: 'Exercise', habit: 'Running', schedule: 'mon,wed,fri', required: true },
+            { person: 'aravind', category: 'Reading', habit: 'Technical Books', schedule: 'daily', required: true }
         ];
 
         // Function to calculate luminance and determine text color
@@ -1275,27 +1227,6 @@
                 categoryColors = JSON.parse(saved);
             }
         }
-
-        // User avatars
-        const userAvatars = {
-            veda: '👧',
-            radhika: '👩',
-            aravind: '👨'
-        };
-
-        // Sample data for testing
-        const SAMPLE_HABITS = [
-            { person: 'veda', category: 'Learning', habit: 'Reading', schedule: 'daily', required: true },
-            { person: 'veda', category: 'Learning', habit: 'Math Practice', schedule: 'weekdays', required: true },
-            { person: 'veda', category: 'Learning', habit: 'Piano', schedule: 'mon,wed,fri', required: true },
-            { person: 'veda', category: 'Health', habit: 'Exercise', schedule: 'daily', required: true },
-            { person: 'radhika', category: 'Fitness', habit: 'Yoga', schedule: 'daily', required: true },
-            { person: 'radhika', category: 'Fitness', habit: 'Walking', schedule: 'daily', required: false },
-            { person: 'radhika', category: 'Wellness', habit: 'Meditation', schedule: 'daily', required: true },
-            { person: 'aravind', category: 'Exercise', habit: 'Push-ups', schedule: 'daily', required: true },
-            { person: 'aravind', category: 'Exercise', habit: 'Running', schedule: 'mon,wed,fri', required: true },
-            { person: 'aravind', category: 'Reading', habit: 'Technical Books', schedule: 'daily', required: true }
-        ];
 
         function generateSampleEntries() {
             const entries = [];
@@ -1361,6 +1292,73 @@
                 
             } catch (error) {
                 console.error('Error initializing Firestore data:', error);
+            }
+        }
+
+        async function updateHabitStatus(habit, category, status) {
+            if (!currentUser) return;
+            
+            // If no selectedDate is provided (for bonus tasks), use today's date
+            if (!selectedDate) {
+                selectedDate = formatDateAsString(new Date());
+            }
+            
+            console.log(`Updating ${habit} to status ${status} for ${selectedDate}`);
+            
+            try {
+                // Create unique ID for this entry
+                const entryId = `${currentUser}_${selectedDate}_${habit}`.replace(/[^a-zA-Z0-9]/g, '_');
+                
+                // Create entry object
+                const newEntry = {
+                    date: selectedDate,
+                    person: currentUser,
+                    category: category,
+                    habit: habit,
+                    status: status,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                // Update local data immediately (optimistic update)
+                // First remove any existing entry for this habit on this day
+                entriesData = entriesData.filter(e => 
+                    !(e.person === currentUser && e.date === selectedDate && e.habit === habit)
+                );
+                
+                // Add the new entry
+                entriesData.push(newEntry);
+                
+                // Save to Firestore
+                await db.collection('entries').doc(entryId).set(newEntry);
+                console.log('Successfully saved to Firestore');
+                
+                // Update visual feedback immediately without full refresh
+                if (document.getElementById('dayModal').style.display === 'flex') {
+                    // Find and update the buttons for this specific habit
+                    const habitEntries = document.querySelectorAll('.habit-entry');
+                    habitEntries.forEach(entry => {
+                        const habitNameEl = entry.querySelector('.habit-entry-name');
+                        if (habitNameEl && habitNameEl.textContent === habit) {
+                            // Remove active class from all status buttons in this entry
+                            const statusButtons = entry.querySelectorAll('.status-btn');
+                            statusButtons.forEach(btn => btn.classList.remove('active'));
+                            
+                            // Add active class to the clicked status button
+                            const targetButton = entry.querySelector(`.status-btn.${status}`);
+                            if (targetButton) {
+                                targetButton.classList.add('active');
+                            }
+                        }
+                    });
+                }
+                
+                // Only refresh dashboard and calendar, not the modal
+                updateDashboard();
+                updateCalendar();
+                
+            } catch (error) {
+                console.error('Error updating habit status:', error);
+                showNotification('Error saving your change. Please try again.', 'error');
             }
         }
 
@@ -1647,616 +1645,3 @@
                 const textColor = getTextColor(bgColor);
                 
                 habitsHTML += `
-                    <div class="habits-category">
-                        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 15px;">
-                            <h3 style="color: ${bgColor}; margin: 0;">${categoryName}</h3>
-                            <button onclick="changeCategoryColor('${categoryName}')" 
-                                    style="background: ${bgColor}; color: ${textColor}; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 0.8em;"
-                                    title="Change category color">🎨</button>
-                        </div>
-                        <div class="habits-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; margin-bottom: 30px;">
-                `;
-                
-                categories[categoryName].forEach(habit => {
-                    habitsHTML += `
-                        <div class="habit-tile" style="background: ${bgColor}; color: ${textColor}; border-radius: 10px; padding: 20px; border: 1px solid rgba(255,255,255,0.2);">
-                            <div style="font-weight: 600; margin-bottom: 8px; color: ${textColor};">${habit.habit}</div>
-                            <div style="font-size: 0.8em; opacity: 0.8; margin-bottom: 15px; color: ${textColor};">${habit.schedule}</div>
-                            <div style="display: flex; gap: 10px;">
-                                <button onclick="editHabit('${habit.habit}')" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: ${textColor}; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Edit</button>
-                                <button onclick="deleteHabit('${habit.habit}')" style="background: rgba(255,0,0,0.3); border: 1px solid rgba(255,0,0,0.5); color: ${textColor}; padding: 6px 12px; border-radius: 6px; cursor: pointer;">Delete</button>
-                            </div>
-                        </div>
-                    `;
-                });
-                
-                habitsHTML += '</div></div>';
-            });
-            
-            if (Object.keys(categories).length === 0) {
-                habitsHTML = '<div style="text-align: center; opacity: 0.7; margin: 40px 0;"><h3>No habits created yet</h3><p>Click "Add New Habit" to get started!</p></div>';
-            }
-            
-            habitsList.innerHTML = habitsHTML;
-        }
-
-        function showAddHabitModal() {
-            // Clear form
-            document.getElementById('habitName').value = '';
-            document.getElementById('habitCategory').value = '';
-            document.getElementById('habitSchedule').value = 'daily';
-            
-            // Show modal
-            document.getElementById('addHabitModal').style.display = 'flex';
-            
-            // Focus on first input
-            setTimeout(() => {
-                document.getElementById('habitName').focus();
-            }, 100);
-        }
-
-        function closeAddHabitModal() {
-            document.getElementById('addHabitModal').style.display = 'none';
-        }
-
-        function confirmAddHabit() {
-            const habitName = document.getElementById('habitName').value.trim();
-            const category = document.getElementById('habitCategory').value.trim();
-            const schedule = document.getElementById('habitSchedule').value;
-            
-            // Validation
-            if (!habitName) {
-                showNotification('Please enter a habit name', 'error');
-                document.getElementById('habitName').focus();
-                return;
-            }
-            
-            if (!category) {
-                showNotification('Please enter a category', 'error');
-                document.getElementById('habitCategory').focus();
-                return;
-            }
-            
-            // Check if habit already exists
-            const existingHabit = habitsData.find(h => 
-                h.person === currentUser && 
-                h.habit.toLowerCase() === habitName.toLowerCase()
-            );
-            
-            if (existingHabit) {
-                showNotification('A habit with this name already exists', 'error');
-                document.getElementById('habitName').focus();
-                return;
-            }
-            
-            // Close modal and add habit
-            closeAddHabitModal();
-            addNewHabit(habitName, category, schedule);
-        }
-
-        async function addNewHabit(habitName, category, schedule) {
-            try {
-                const newHabit = {
-                    person: currentUser,
-                    category: category,
-                    habit: habitName,
-                    schedule: schedule,
-                    required: true
-                };
-                
-                // Add to local data
-                habitsData.push(newHabit);
-                
-                // Save to Firestore
-                const habitRef = db.collection('habits').doc();
-                await habitRef.set(newHabit);
-                
-                console.log('Successfully added new habit');
-                
-                // Refresh all views
-                updateDashboard();
-                updateCalendar();
-                updateHabitsView();
-                
-                showNotification(`✅ Successfully added "${habitName}" to ${category}!`, 'success');
-                
-            } catch (error) {
-                console.error('Error adding habit:', error);
-                showNotification('Error adding habit. Please try again.', 'error');
-            }
-        }
-
-        let currentEditingHabit = null;
-
-        async function editHabit(habitName) {
-            const habit = habitsData.find(h => h.person === currentUser && h.habit === habitName);
-            if (!habit) {
-                showNotification('Habit not found!', 'error');
-                return;
-            }
-            
-            currentEditingHabit = habitName;
-            
-            // Populate form
-            document.getElementById('editHabitName').value = habit.habit;
-            document.getElementById('editHabitCategory').value = habit.category;
-            document.getElementById('editHabitSchedule').value = habit.schedule;
-            
-            // Show modal
-            document.getElementById('editHabitModal').style.display = 'flex';
-            
-            // Focus on first input
-            setTimeout(() => {
-                document.getElementById('editHabitName').focus();
-            }, 100);
-        }
-
-        function closeEditHabitModal() {
-            document.getElementById('editHabitModal').style.display = 'none';
-            currentEditingHabit = null;
-        }
-
-        function confirmEditHabit() {
-            const newName = document.getElementById('editHabitName').value.trim();
-            const newCategory = document.getElementById('editHabitCategory').value.trim();
-            const newSchedule = document.getElementById('editHabitSchedule').value;
-            
-            // Validation
-            if (!newName) {
-                showNotification('Please enter a habit name', 'error');
-                document.getElementById('editHabitName').focus();
-                return;
-            }
-            
-            if (!newCategory) {
-                showNotification('Please enter a category', 'error');
-                document.getElementById('editHabitCategory').focus();
-                return;
-            }
-            
-            // Check if habit name already exists (excluding current habit)
-            const existingHabit = habitsData.find(h => 
-                h.person === currentUser && 
-                h.habit.toLowerCase() === newName.toLowerCase() &&
-                h.habit !== currentEditingHabit
-            );
-            
-            if (existingHabit) {
-                showNotification('A habit with this name already exists', 'error');
-                document.getElementById('editHabitName').focus();
-                return;
-            }
-            
-            // Close modal and save changes
-            closeEditHabitModal();
-            saveEditHabit(currentEditingHabit, newName, newCategory, newSchedule);
-        }
-
-        async function saveEditHabit(oldHabitName, newName, newCategory, newSchedule) {
-            try {
-                // Update local data
-                const habitIndex = habitsData.findIndex(h => h.person === currentUser && h.habit === oldHabitName);
-                if (habitIndex !== -1) {
-                    habitsData[habitIndex].habit = newName;
-                    habitsData[habitIndex].category = newCategory;
-                    habitsData[habitIndex].schedule = newSchedule;
-                    
-                    // Update Firestore - find the document and update it
-                    const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', oldHabitName).get();
-                    
-                    if (!habitsSnapshot.empty) {
-                        const doc = habitsSnapshot.docs[0];
-                        await doc.ref.update({
-                            habit: newName,
-                            category: newCategory,
-                            schedule: newSchedule
-                        });
-                    }
-                    
-                    // Update all entries that reference the old habit name
-                    if (oldHabitName !== newName) {
-                        entriesData.forEach(entry => {
-                            if (entry.person === currentUser && entry.habit === oldHabitName) {
-                                entry.habit = newName;
-                                entry.category = newCategory;
-                            }
-                        });
-                        
-                        // Update entries in Firestore
-                        const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', oldHabitName).get();
-                        const batch = db.batch();
-                        
-                        entriesSnapshot.forEach(doc => {
-                            batch.update(doc.ref, {
-                                habit: newName,
-                                category: newCategory
-                            });
-                        });
-                        
-                        await batch.commit();
-                    }
-                }
-                
-                // Refresh all views
-                updateDashboard();
-                updateCalendar();
-                updateHabitsView();
-                
-                showNotification(`✅ Successfully updated "${newName}"!`, 'success');
-                
-            } catch (error) {
-                console.error('Error updating habit:', error);
-                showNotification('Error updating habit. Please try again.', 'error');
-            }
-        }
-
-        function deleteHabit(habitName) {
-            console.log(`Delete button clicked for habit: ${habitName}`);
-            showConfirmModal(
-                'Delete Habit',
-                `Are you sure you want to delete "${habitName}"?\n\nThis will also delete ALL your progress/entries for this habit. This action cannot be undone.`,
-                () => confirmDeleteHabit(habitName)
-            );
-        }
-
-        async function confirmDeleteHabit(habitName) {
-            try {
-                console.log(`Attempting to delete habit: ${habitName} for user: ${currentUser}`);
-                
-                // Find the habit in local data first
-                const habitToDelete = habitsData.find(h => h.person === currentUser && h.habit === habitName);
-                if (!habitToDelete) {
-                    showNotification(`Habit "${habitName}" not found!`, 'error');
-                    return;
-                }
-                
-                // Remove from local data immediately for UI responsiveness
-                const originalHabitsData = [...habitsData];
-                const originalEntriesData = [...entriesData];
-                
-                habitsData = habitsData.filter(h => !(h.person === currentUser && h.habit === habitName));
-                entriesData = entriesData.filter(e => !(e.person === currentUser && e.habit === habitName));
-                
-                // Refresh UI immediately
-                updateDashboard();
-                updateCalendar();
-                updateHabitsView();
-                
-                // Try to delete from Firestore (if the data exists there)
-                try {
-                    const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', habitName).get();
-                    const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', habitName).get();
-                    
-                    if (!habitsSnapshot.empty || !entriesSnapshot.empty) {
-                        const batch = db.batch();
-                        
-                        // Delete habit documents
-                        habitsSnapshot.forEach(doc => {
-                            batch.delete(doc.ref);
-                        });
-                        
-                        // Delete all related entries
-                        entriesSnapshot.forEach(doc => {
-                            batch.delete(doc.ref);
-                        });
-                        
-                        await batch.commit();
-                        console.log('Successfully deleted from Firestore');
-                    } else {
-                        console.log('No Firestore documents found to delete (likely using sample data)');
-                    }
-                } catch (firestoreError) {
-                    console.warn('Failed to delete from Firestore, but local deletion successful:', firestoreError);
-                    // Don't revert local changes since this might be sample data
-                }
-                
-                showNotification(`🗑️ Successfully deleted "${habitName}" and all related data.`, 'success');
-                
-            } catch (error) {
-                console.error('Error deleting habit:', error);
-                
-                // Revert local changes if there was an error
-                habitsData = originalHabitsData;
-                entriesData = originalEntriesData;
-                
-                // Refresh UI to show reverted state
-                updateDashboard();
-                updateCalendar();
-                updateHabitsView();
-                
-                showNotification('Error deleting habit. Please try again.', 'error');
-            }
-        }
-
-        // Custom confirmation modal
-        let confirmCallback = null;
-
-        function showConfirmModal(title, message, callback) {
-            console.log(`Showing confirmation modal: ${title}`);
-            document.getElementById('confirmModalTitle').textContent = title;
-            document.getElementById('confirmModalMessage').textContent = message;
-            confirmCallback = callback;
-            
-            document.getElementById('confirmModal').style.display = 'flex';
-            
-            // Set up the confirm button
-            const confirmBtn = document.getElementById('confirmModalAction');
-            confirmBtn.onclick = () => {
-                console.log('Confirm button clicked in modal');
-                closeConfirmModal();
-                if (confirmCallback) {
-                    console.log('Executing confirm callback');
-                    confirmCallback();
-                } else {
-                    console.error('No callback function found!');
-                }
-            };
-        }
-
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').style.display = 'none';
-            confirmCallback = null;
-        }
-
-        // Notification toast system
-        function showNotification(message, type = 'success') {
-            const toast = document.getElementById('notificationToast');
-            const icon = document.getElementById('toastIcon');
-            const messageEl = document.getElementById('toastMessage');
-            const content = toast.querySelector('.toast-content');
-            
-            // Set icon and message
-            if (type === 'success') {
-                icon.textContent = '✅';
-                content.className = 'toast-content success';
-            } else if (type === 'error') {
-                icon.textContent = '❌';
-                content.className = 'toast-content error';
-            } else if (type === 'info') {
-                icon.textContent = 'ℹ️';
-                content.className = 'toast-content info';
-            }
-            
-            messageEl.textContent = message;
-            
-            // Show toast
-            toast.classList.add('show');
-            
-            // Hide after 4 seconds
-            setTimeout(() => {
-                toast.classList.remove('show');
-            }, 4000);
-        }
-
-        function loginPerson(person) {
-            currentUser = person;
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('mainApp').style.display = 'block';
-            
-            // Update user info
-            document.getElementById('userAvatar').textContent = userAvatars[person];
-            document.getElementById('userName').textContent = person.charAt(0).toUpperCase() + person.slice(1);
-            
-            // Load category colors for this user
-            loadCategoryColors();
-            
-            // Load and display data
-            loadData().then(() => {
-                updateDashboard();
-                updateCalendar();
-            });
-        }
-
-        function logout() {
-            currentUser = null;
-            document.getElementById('loginScreen').style.display = 'flex';
-            document.getElementById('mainApp').style.display = 'none';
-            
-            // Reset navigation
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelector('.nav-btn').classList.add('active');
-            showView('dashboard');
-        }
-
-        function showView(view) {
-            currentView = view;
-            
-            // Update navigation
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-            
-            // Show/hide views
-            document.getElementById('dashboardView').style.display = view === 'dashboard' ? 'block' : 'none';
-            document.getElementById('calendarView').style.display = view === 'calendar' ? 'block' : 'none';
-            document.getElementById('habitsView').style.display = view === 'habits' ? 'block' : 'none';
-            
-            if (view === 'calendar') {
-                updateCalendar();
-            } else if (view === 'habits') {
-                updateHabitsView();
-            }
-        }
-
-        async function loadData() {
-            try {
-                console.log('Loading data from Firestore...');
-                
-                // Load habits from Firestore
-                const habitsSnapshot = await db.collection('habits').get();
-                habitsData = [];
-                
-                habitsSnapshot.forEach(doc => {
-                    habitsData.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                // Load entries from Firestore
-                const entriesSnapshot = await db.collection('entries').get();
-                entriesData = [];
-                
-                entriesSnapshot.forEach(doc => {
-                    entriesData.push({
-                        id: doc.id,
-                        ...doc.data()
-                    });
-                });
-                
-                // If no data in Firestore, initialize with sample data
-                if (habitsData.length === 0) {
-                    console.log('No habits found, initializing with sample data...');
-                    await initializeFirestoreData();
-                    habitsData = SAMPLE_HABITS;
-                    entriesData = generateSampleEntries();
-                }
-                
-                console.log('Successfully loaded data from Firestore:', {
-                    habits: habitsData.length,
-                    entries: entriesData.length
-                });
-                
-            } catch (error) {
-                console.error('Error loading data from Firestore:', error);
-                console.log('Falling back to sample data');
-                habitsData = SAMPLE_HABITS;
-                entriesData = generateSampleEntries();
-            }
-        }
-
-        // Initialize the app
-        window.addEventListener('load', () => {
-            loadData();
-        });
-
-        // Keyboard navigation
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                // Close any open modal
-                closeDayModal();
-                closeAddHabitModal();
-                closeEditHabitModal();
-                closeConfirmModal();
-                closeColorPicker();
-            }
-            
-            // Enter key handling for forms
-            if (e.key === 'Enter') {
-                const addModal = document.getElementById('addHabitModal');
-                const editModal = document.getElementById('editHabitModal');
-                
-                if (addModal.style.display === 'flex') {
-                    e.preventDefault();
-                    confirmAddHabit();
-                } else if (editModal.style.display === 'flex') {
-                    e.preventDefault();
-                    confirmEditHabit();
-                }
-            }
-        });
-
-        // Click outside modal to close
-        document.addEventListener('click', (e) => {
-            // Day modal
-            if (e.target.id === 'dayModal') {
-                closeDayModal();
-            }
-            
-            // Add habit modal
-            if (e.target.id === 'addHabitModal') {
-                closeAddHabitModal();
-            }
-            
-            // Edit habit modal
-            if (e.target.id === 'editHabitModal') {
-                closeEditHabitModal();
-            }
-            
-            // Confirm modal
-            if (e.target.id === 'confirmModal') {
-                closeConfirmModal();
-            }
-            
-            // Color picker modal
-            if (e.target.id === 'colorPickerModal') {
-                closeColorPicker();
-            }
-        });
-
-        function changeCategoryColor(categoryName) {
-            // Create a simple color picker modal
-            const colorOptions = COLOR_PALETTE.map(color => 
-                `<button onclick="setCategoryColor('${categoryName}', '${color}')" 
-                        style="background: ${color}; color: ${getTextColor(color)}; border: 2px solid ${color === getCategoryColor(categoryName) ? '#fff' : 'transparent'}; 
-                               width: 40px; height: 40px; margin: 5px; border-radius: 8px; cursor: pointer;">
-                   ${color === getCategoryColor(categoryName) ? '✓' : ''}
-                 </button>`
-            ).join('');
-            
-            const customColorInput = `
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
-                    <label style="display: block; margin-bottom: 8px; color: white;">Or choose custom color:</label>
-                    <input type="color" id="customColorPicker" value="${getCategoryColor(categoryName)}" 
-                           onchange="setCategoryColor('${categoryName}', this.value)"
-                           style="width: 50px; height: 30px; border: none; border-radius: 4px; cursor: pointer;">
-                </div>
-            `;
-            
-            // Create modal HTML
-            const modalHTML = `
-                <div id="colorPickerModal" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                     background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center;">
-                    <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); 
-                         border-radius: 15px; padding: 30px; max-width: 400px; border: 1px solid rgba(255,255,255,0.2);">
-                        <h3 style="color: white; margin-bottom: 20px; text-align: center;">Choose Color for "${categoryName}"</h3>
-                        <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-                            ${colorOptions}
-                        </div>
-                        ${customColorInput}
-                        <div style="text-align: center; margin-top: 20px;">
-                            <button onclick="closeColorPicker()" 
-                                    style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); 
-                                           color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer;">
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            // Add modal to page
-            document.body.insertAdjacentHTML('beforeend', modalHTML);
-        }
-
-        function setCategoryColor(categoryName, color) {
-            categoryColors[categoryName] = color;
-            saveCategoryColors();
-            
-            // Refresh views to show new color
-            updateDashboard();
-            updateHabitsView();
-            
-            // Close color picker
-            closeColorPicker();
-        }
-
-        function closeColorPicker() {
-            const modal = document.getElementById('colorPickerModal');
-            if (modal) {
-                modal.remove();
-            }
-        }
-
-        function closeDayModal() {
-            document.getElementById('dayModal').style.display = 'none';
-            selectedDate = null;
-        }
-
-        function saveAndCloseDayModal() {
-            // Auto-save is already happening on each click, so just close
-            closeDayModal();
-            showNotification('Changes saved successfully!', 'success');
-        }
-    </script>
-</body>
-</html>
