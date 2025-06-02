@@ -231,7 +231,7 @@ export class DashboardView extends LitElement {
                                 </div>
                                 <div class="habit-status">
                                     <div class="status-indicator ${status}"></div>
-                                    ${status === 'completed' ? '✅' : status === 'rest' ? '💤' : '❌'}
+                                    ${status === 'completed' ? '✓' : status === 'rest' ? 'z' : '✗'}
                                 </div>
                             </div>
                         `;
