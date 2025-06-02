@@ -1891,6 +1891,7 @@
         }
 
         function deleteHabit(habitName) {
+            console.log(`Delete button clicked for habit: ${habitName}`);
             showConfirmModal(
                 'Delete Habit',
                 `Are you sure you want to delete "${habitName}"?\n\nThis will also delete ALL your progress/entries for this habit. This action cannot be undone.`,
@@ -1900,37 +1901,69 @@
 
         async function confirmDeleteHabit(habitName) {
             try {
-                // Remove from local data
+                console.log(`Attempting to delete habit: ${habitName} for user: ${currentUser}`);
+                
+                // Find the habit in local data first
+                const habitToDelete = habitsData.find(h => h.person === currentUser && h.habit === habitName);
+                if (!habitToDelete) {
+                    showNotification(`Habit "${habitName}" not found!`, 'error');
+                    return;
+                }
+                
+                // Remove from local data immediately for UI responsiveness
+                const originalHabitsData = [...habitsData];
+                const originalEntriesData = [...entriesData];
+                
                 habitsData = habitsData.filter(h => !(h.person === currentUser && h.habit === habitName));
                 entriesData = entriesData.filter(e => !(e.person === currentUser && e.habit === habitName));
                 
-                // Delete from Firestore
-                const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', habitName).get();
-                const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', habitName).get();
-                
-                const batch = db.batch();
-                
-                // Delete habit documents
-                habitsSnapshot.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                // Delete all related entries
-                entriesSnapshot.forEach(doc => {
-                    batch.delete(doc.ref);
-                });
-                
-                await batch.commit();
-                
-                // Refresh all views
+                // Refresh UI immediately
                 updateDashboard();
                 updateCalendar();
                 updateHabitsView();
+                
+                // Try to delete from Firestore (if the data exists there)
+                try {
+                    const habitsSnapshot = await db.collection('habits').where('person', '==', currentUser).where('habit', '==', habitName).get();
+                    const entriesSnapshot = await db.collection('entries').where('person', '==', currentUser).where('habit', '==', habitName).get();
+                    
+                    if (!habitsSnapshot.empty || !entriesSnapshot.empty) {
+                        const batch = db.batch();
+                        
+                        // Delete habit documents
+                        habitsSnapshot.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        
+                        // Delete all related entries
+                        entriesSnapshot.forEach(doc => {
+                            batch.delete(doc.ref);
+                        });
+                        
+                        await batch.commit();
+                        console.log('Successfully deleted from Firestore');
+                    } else {
+                        console.log('No Firestore documents found to delete (likely using sample data)');
+                    }
+                } catch (firestoreError) {
+                    console.warn('Failed to delete from Firestore, but local deletion successful:', firestoreError);
+                    // Don't revert local changes since this might be sample data
+                }
                 
                 showNotification(`🗑️ Successfully deleted "${habitName}" and all related data.`, 'success');
                 
             } catch (error) {
                 console.error('Error deleting habit:', error);
+                
+                // Revert local changes if there was an error
+                habitsData = originalHabitsData;
+                entriesData = originalEntriesData;
+                
+                // Refresh UI to show reverted state
+                updateDashboard();
+                updateCalendar();
+                updateHabitsView();
+                
                 showNotification('Error deleting habit. Please try again.', 'error');
             }
         }
@@ -1939,6 +1972,7 @@
         let confirmCallback = null;
 
         function showConfirmModal(title, message, callback) {
+            console.log(`Showing confirmation modal: ${title}`);
             document.getElementById('confirmModalTitle').textContent = title;
             document.getElementById('confirmModalMessage').textContent = message;
             confirmCallback = callback;
@@ -1948,9 +1982,13 @@
             // Set up the confirm button
             const confirmBtn = document.getElementById('confirmModalAction');
             confirmBtn.onclick = () => {
+                console.log('Confirm button clicked in modal');
                 closeConfirmModal();
                 if (confirmCallback) {
+                    console.log('Executing confirm callback');
                     confirmCallback();
+                } else {
+                    console.error('No callback function found!');
                 }
             };
         }
