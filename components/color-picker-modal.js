@@ -172,7 +172,7 @@ export class ColorPickerModal extends LitElement {
                                     style="background: ${color}; color: ${textColor}; border: 2px solid ${isSelected ? '#fff' : 'transparent'};"
                                     @click=${() => this._selectColor(color)}
                                     title="${color}">
-                                ${isSelected ? '✓' : ''}
+                                ${isSelected ? 'Selected' : ''}
                             </button>
                         `;
                     })}
