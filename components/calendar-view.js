@@ -122,9 +122,9 @@ export class CalendarView extends LitElement {
             <div class="calendar-header">
                 <h2>${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}</h2>
                 <div class="calendar-nav">
-                    <button @click=${() => this._changeMonth(-1)}>← Previous</button>
+                    <button @click=${() => this._changeMonth(-1)}>Previous</button>
                     <button @click=${this._goToToday}>Today</button>
-                    <button @click=${() => this._changeMonth(1)}>Next →</button>
+                    <button @click=${() => this._changeMonth(1)}>Next</button>
                 </div>
             </div>
             
