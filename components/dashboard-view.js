@@ -1,6 +1,9 @@
+// Dashboard View Component - Version 3.0 - Fresh rebuild
 import { LitElement, html, css, property } from './base-component.js';
 import { formatDateAsString, isHabitScheduledForDate, getTextColor } from './base-component.js';
 import { COLOR_PALETTE } from '../config/constants.js';
+
+console.log('Dashboard View Component loaded successfully - Version 3.0');
 
 export class DashboardView extends LitElement {
     static styles = css`
