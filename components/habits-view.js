@@ -196,10 +196,9 @@ export class HabitsView extends LitElement {
                 <div class="habits-category">
                     <div class="category-header">
                         <h3 style="color: ${bgColor};">${categoryName}</h3>
-                        <button class="color-btn" 
-                                style="background: ${bgColor}; color: ${textColor};"
-                                @click=${() => this._changeCategoryColor(categoryName)}
-                                title="Change category color">🎨</button>
+                        <button class="change-color-btn" 
+                                @click=${() => this._openColorPicker(categoryName)}
+                                title="Change category color">Color</button>
                     </div>
                     <div class="habits-grid">
                         ${categories[categoryName].map(habit => html`
@@ -257,6 +256,13 @@ export class HabitsView extends LitElement {
 
     _changeCategoryColor(categoryName) {
         this.dispatchEvent(new CustomEvent('change-category-color', {
+            detail: { categoryName },
+            bubbles: true
+        }));
+    }
+
+    _openColorPicker(categoryName) {
+        this.dispatchEvent(new CustomEvent('open-color-picker', {
             detail: { categoryName },
             bubbles: true
         }));
