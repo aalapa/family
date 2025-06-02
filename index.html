@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shivsai family habit tracker</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            min-height: 100vh;
+            font-weight: 400;
+            overflow-x: hidden;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <habit-tracker-app></habit-tracker-app>
+
+    <script type="module">
+        // Import and initialize Firebase
+        import { firebaseConfig } from './config/constants.js';
+        
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        window.db = firebase.firestore();
+        
+        // Import all components
+        import './components/toast-notification.js';
+        import './components/login-screen.js';
+        import './components/dashboard-view.js';
+        import './components/calendar-view.js';
+        import './components/day-modal.js';
+        import './components/habits-view.js';
+        import './components/add-habit-modal.js';
+        import './components/edit-habit-modal.js';
+        import './components/confirm-modal.js';
+        import './components/color-picker-modal.js';
+        import './components/habit-tracker-app.js';
+    </script>
+</body>
+</html> 
