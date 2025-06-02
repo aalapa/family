@@ -1020,7 +1020,7 @@
             
             // If no selectedDate is provided (for bonus tasks), use today's date
             if (!selectedDate) {
-                selectedDate = new Date().toISOString().split('T')[0];
+                selectedDate = formatDateAsString(new Date());
             }
             
             console.log(`Updating ${habit} to status ${status} for ${selectedDate}`);
@@ -1078,7 +1078,7 @@
                 
             } catch (error) {
                 console.error('Error updating habit status:', error);
-                alert('Error saving your change. Please try again.');
+                showNotification('Error saving your change. Please try again.', 'error');
             }
         }
     </script>
@@ -1371,7 +1371,7 @@
             const userEntries = entriesData.filter(e => e.person === currentUser);
             
             // Calculate stats
-            const today = new Date().toISOString().split('T')[0];
+            const today = formatDateAsString(new Date());
             const todayEntries = userEntries.filter(e => e.date === today);
             
             // Only show scheduled habits for today in dashboard
@@ -1436,9 +1436,23 @@
             categoriesGrid.innerHTML = categoriesHTML;
         }
 
+        // Helper function to create date from YYYY-MM-DD string without timezone issues
+        function createDateFromString(dateStr) {
+            const parts = dateStr.split('-');
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+
+        // Helper function to format date as YYYY-MM-DD in local timezone
+        function formatDateAsString(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
         function openDayModal(date) {
             selectedDate = date;
-            const dateObj = new Date(date);
+            const dateObj = createDateFromString(date);
             const modalTitle = document.getElementById('dayModalTitle');
             modalTitle.textContent = `Edit ${dateObj.toLocaleDateString('en-US', { 
                 weekday: 'long', 
@@ -1505,30 +1519,98 @@
             
             // Get first day of month and number of days
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const startDate = new Date(firstDay);
             startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // Today's date string for comparison
+            const todayStr = formatDateAsString(new Date());
             
             // Add calendar days
             for (let i = 0; i < 42; i++) {
                 const date = new Date(startDate);
                 date.setDate(startDate.getDate() + i);
                 
-                const dateStr = date.toISOString().split('T')[0];
+                const dateStr = formatDateAsString(date);
                 const isCurrentMonth = date.getMonth() === currentDate.getMonth();
-                const isToday = dateStr === new Date().toISOString().split('T')[0];
+                const isToday = dateStr === todayStr;
                 
                 const dayEntries = entriesData.filter(e => e.person === currentUser && e.date === dateStr);
                 const completed = dayEntries.filter(e => e.status === 'completed').length;
                 const total = habitsData.filter(h => h.person === currentUser && isHabitScheduledForDate(h, date)).length;
                 
+                // Calculate completion percentage
+                const completionPercentage = total > 0 ? (completed / total) * 100 : 0;
+                
+                // Generate background color based on completion percentage
+                let backgroundColor = 'rgba(255,255,255,0.05)';
+                let textColor = 'white';
+                let borderColor = 'rgba(255,255,255,0.1)';
+                
+                if (total > 0) {
+                    if (completionPercentage === 100) {
+                        // Perfect completion - bright green
+                        backgroundColor = 'rgba(34, 197, 94, 0.8)';
+                        borderColor = 'rgba(34, 197, 94, 1)';
+                        textColor = 'white';
+                    } else if (completionPercentage >= 80) {
+                        // High completion - medium green
+                        backgroundColor = 'rgba(34, 197, 94, 0.6)';
+                        borderColor = 'rgba(34, 197, 94, 0.8)';
+                        textColor = 'white';
+                    } else if (completionPercentage >= 60) {
+                        // Good completion - lighter green
+                        backgroundColor = 'rgba(34, 197, 94, 0.4)';
+                        borderColor = 'rgba(34, 197, 94, 0.6)';
+                        textColor = 'white';
+                    } else if (completionPercentage >= 40) {
+                        // Some completion - yellow-green
+                        backgroundColor = 'rgba(132, 204, 22, 0.4)';
+                        borderColor = 'rgba(132, 204, 22, 0.6)';
+                        textColor = 'white';
+                    } else if (completionPercentage >= 20) {
+                        // Low completion - orange
+                        backgroundColor = 'rgba(251, 146, 60, 0.4)';
+                        borderColor = 'rgba(251, 146, 60, 0.6)';
+                        textColor = 'white';
+                    } else if (completionPercentage > 0) {
+                        // Very low completion - light red
+                        backgroundColor = 'rgba(239, 68, 68, 0.3)';
+                        borderColor = 'rgba(239, 68, 68, 0.5)';
+                        textColor = 'white';
+                    } else {
+                        // No completion - red
+                        backgroundColor = 'rgba(239, 68, 68, 0.5)';
+                        borderColor = 'rgba(239, 68, 68, 0.7)';
+                        textColor = 'white';
+                    }
+                }
+                
+                // Special styling for today
+                if (isToday) {
+                    borderColor = '#667eea';
+                    if (total === 0) {
+                        backgroundColor = 'rgba(102, 126, 234, 0.2)';
+                    }
+                }
+                
+                // Opacity for other month days
+                const dayOpacity = isCurrentMonth ? '1' : '0.4';
+                
                 calendarHTML += `
                     <div class="calendar-day ${isCurrentMonth ? '' : 'other-month'} ${isToday ? 'today' : ''}" 
                          onclick="openDayModal('${dateStr}')"
-                         style="opacity: ${isCurrentMonth ? '1' : '0.3'}; 
-                                background: ${isToday ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.05)'};">
-                        <div style="font-weight: 600;">${date.getDate()}</div>
-                        ${total > 0 ? `<div style="font-size: 0.7em; margin-top: 2px;">${completed}/${total}</div>` : ''}
+                         style="opacity: ${dayOpacity}; 
+                                background: ${backgroundColor}; 
+                                border-color: ${borderColor};
+                                color: ${textColor};
+                                border-width: ${isToday ? '2px' : '1px'};">
+                        <div style="font-weight: 600; margin-bottom: 2px;">${date.getDate()}</div>
+                        ${total > 0 ? `
+                            <div style="font-size: 0.65em; opacity: 0.9;">
+                                ${completed}/${total} (${Math.round(completionPercentage)}%)
+                            </div>
+                        ` : ''}
+                        ${isToday ? '<div style="font-size: 0.6em; margin-top: 2px;">TODAY</div>' : ''}
                     </div>
                 `;
             }
