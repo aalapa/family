@@ -1,5 +1,5 @@
-import { LitElement, html, css } from 'https://cdn.jsdelivr.net/npm/lit@3.1.0/index.js';
-import { property, state } from 'https://cdn.jsdelivr.net/npm/lit@3.1.0/decorators.js';
+import { LitElement, html, css } from 'https://cdn.skypack.dev/lit@3.1.0';
+import { property, state } from 'https://cdn.skypack.dev/lit@3.1.0/decorators.js';
 
 // Utility functions
 export function formatDateAsString(date) {
