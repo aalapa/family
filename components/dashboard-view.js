@@ -112,9 +112,17 @@ export class DashboardView extends LitElement {
             margin-right: 4px;
         }
 
-        .status-indicator.completed { background: #22c55e; }
-        .status-indicator.rest { background: #86efac; }
-        .status-indicator.missed { background: rgba(255,255,255,0.3); }
+        .status-indicator.completed { 
+            background: #22c55e; 
+        }
+        
+        .status-indicator.rest { 
+            background: #86efac; 
+        }
+        
+        .status-indicator.missed { 
+            background: rgba(255,255,255,0.3); 
+        }
 
         .no-habits {
             text-align: center;
@@ -183,7 +191,6 @@ export class DashboardView extends LitElement {
                     <div class="stat-label">This Month</div>
                 </div>
             </div>
-
             <div class="categories-grid">
                 ${this._renderCategories(todayHabits, todayEntries)}
             </div>
@@ -222,16 +229,14 @@ export class DashboardView extends LitElement {
                         const status = entry ? entry.status : 'missed';
                         
                         return html`
-                            <div class="habit-row" 
-                                 @click=${() => this._openDayModal(formatDateAsString(new Date()))}
-                                 style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
+                            <div class="habit-row" @click=${() => this._openDayModal(formatDateAsString(new Date()))} style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">
                                 <div class="habit-info">
                                     <div class="habit-name" style="color: ${textColor};">${habit.habit}</div>
                                     <div class="habit-schedule" style="color: ${textColor}; opacity: 0.8; background: rgba(255,255,255,0.1);">${habit.schedule}</div>
                                 </div>
                                 <div class="habit-status">
                                     <div class="status-indicator ${status}"></div>
-                                    ${status === 'completed' ? '✓' : status === 'rest' ? 'z' : '✗'}
+                                    <span style="color: ${textColor};">${status === 'completed' ? 'Done' : status === 'rest' ? 'Rest' : 'Miss'}</span>
                                 </div>
                             </div>
                         `;
