@@ -228,15 +228,15 @@ export class DayModal extends LitElement {
                                     <div class="habit-entry-category">${habit.category}</div>
                                 </div>
                                 <div class="status-buttons">
-                                    <button class="status-btn completed ${currentStatus === 'completed' ? 'active' : ''}" 
-                                            @click=${() => this._updateStatus(habit.habit, habit.category, 'completed')} 
-                                            title="Completed">✅</button>
-                                    <button class="status-btn rest ${currentStatus === 'rest' ? 'active' : ''}" 
-                                            @click=${() => this._updateStatus(habit.habit, habit.category, 'rest')} 
-                                            title="Rest Day">💤</button>
-                                    <button class="status-btn missed ${currentStatus === 'missed' ? 'active' : ''}" 
-                                            @click=${() => this._updateStatus(habit.habit, habit.category, 'missed')} 
-                                            title="Missed">❌</button>
+                                    <button class="status-btn completed ${entry?.status === 'completed' ? 'active' : ''}" 
+                                            @click=${() => this._setStatus(habit.habit, 'completed')}
+                                            title="Completed">Done</button>
+                                    <button class="status-btn rest ${entry?.status === 'rest' ? 'active' : ''}" 
+                                            @click=${() => this._setStatus(habit.habit, 'rest')}
+                                            title="Rest Day">Rest</button>
+                                    <button class="status-btn missed ${entry?.status === 'missed' ? 'active' : ''}" 
+                                            @click=${() => this._setStatus(habit.habit, 'missed')}
+                                            title="Missed">Miss</button>
                                 </div>
                             </div>
                         `;
@@ -244,7 +244,7 @@ export class DayModal extends LitElement {
                 </div>
 
                 <div class="modal-footer">
-                    <button class="save-close-btn" @click=${this._saveAndClose}>✓ Save & Close</button>
+                    <button class="save-close-btn" @click=${this._saveAndClose}>Save & Close</button>
                 </div>
             </div>
         `;
@@ -262,9 +262,9 @@ export class DayModal extends LitElement {
         this.selectedDate = '';
     }
 
-    _updateStatus(habit, category, status) {
+    _setStatus(habit, status) {
         this.dispatchEvent(new CustomEvent('update-habit-status', {
-            detail: { habit, category, status, date: this.selectedDate },
+            detail: { habit, status, date: this.selectedDate },
             bubbles: true
         }));
     }
