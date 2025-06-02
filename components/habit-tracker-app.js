@@ -309,7 +309,7 @@ export class HabitTrackerApp extends LitElement {
             // Force update of all components
             this.requestUpdate();
             
-            this._showNotification(`✅ Successfully added "${habitName}" to ${category}!`, 'success');
+            this._showNotification(`Successfully added "${habitName}" to ${category}!`, 'success');
             
         } catch (error) {
             console.error('Error adding habit:', error);
@@ -378,7 +378,7 @@ export class HabitTrackerApp extends LitElement {
                 this.entriesData = [...this.entriesData];
             }
             
-            this._showNotification(`✅ Successfully updated "${newName}"!`, 'success');
+            this._showNotification(`Successfully updated "${newName}"!`, 'success');
             
         } catch (error) {
             console.error('Error updating habit:', error);
@@ -444,7 +444,7 @@ export class HabitTrackerApp extends LitElement {
                 console.warn('Failed to delete from Firestore, but local deletion successful:', firestoreError);
             }
             
-            this._showNotification(`🗑️ Successfully deleted "${habitName}" and all related data.`, 'success');
+            this._showNotification(`Successfully deleted "${habitName}" and all related data.`, 'success');
             
         } catch (error) {
             console.error('Error deleting habit:', error);
@@ -475,7 +475,7 @@ export class HabitTrackerApp extends LitElement {
         // Force update to show new colors
         this.requestUpdate();
         
-        this._showNotification(`🎨 Updated color for "${categoryName}"`, 'success');
+        this._showNotification(`Updated color for "${categoryName}"`, 'success');
     }
 
     _getDefaultCategoryColor(category) {
